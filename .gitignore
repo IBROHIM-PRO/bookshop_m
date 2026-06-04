@@ -1,0 +1,47 @@
+# ─── Flutter / Dart ───────────────────────────────────────────────────────────
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+
+# ─── Build outputs ────────────────────────────────────────────────────────────
+build/
+*.apk
+*.ipa
+*.aab
+
+# ─── IDE / Editor ─────────────────────────────────────────────────────────────
+.idea/
+*.iml
+.vscode/
+
+# ─── Dart generated files ─────────────────────────────────────────────────────
+*.g.dart
+*.freezed.dart
+*.mocks.dart
+
+# ─── Lock file (optional: uncomment if you want to ignore it) ─────────────────
+# pubspec.lock
+
+# ─── Platform folders (Шумо танҳо Android истифода мебаред) ──────────────────
+linux/
+macos/
+windows/
+web/
+
+# ─── iOS (агар iOS build лозим нашавад, ин хатҳоро пок монед) ────────────────
+# ios/
+
+# ─── Android generated ────────────────────────────────────────────────────────
+android/local.properties
+android/.gradle/
+android/captures/
+android/key.properties
+android/**/GeneratedPluginRegistrant.java
+
+# ─── Misc ─────────────────────────────────────────────────────────────────────
+*.log
+*.DS_Store
+Thumbs.db
