@@ -110,7 +110,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           children: [
                             Expanded(
                               child: GestureDetector(
-                                onPressed: () {
+                                onTap: () {
                                   setState(() {
                                     _selectedRole = 'Reader';
                                   });
@@ -154,7 +154,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             const SizedBox(width: 16),
                             Expanded(
                               child: GestureDetector(
-                                onPressed: () {
+                                onTap: () {
                                   setState(() {
                                     _selectedRole = 'Parent';
                                   });

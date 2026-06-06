@@ -43,8 +43,9 @@ class QuestionModel {
   final String optionB;
   final String optionC;
   final String optionD;
-  final String questionType; // 'Single', 'Multiple', 'Closed'
+  final String questionType; // 'Single', 'Multiple', 'Closed', 'TrueFalse'
   final int points;
+  final String? imageUrl;
 
   QuestionModel({
     required this.id,
@@ -55,6 +56,7 @@ class QuestionModel {
     required this.optionD,
     required this.questionType,
     required this.points,
+    this.imageUrl,
   });
 
   factory QuestionModel.fromJson(Map<String, dynamic> json) {
@@ -67,6 +69,7 @@ class QuestionModel {
       optionD: json['optionD'] ?? '',
       questionType: json['questionType'] ?? 'Single',
       points: json['points'] ?? 10,
+      imageUrl: json['imageUrl'],
     );
   }
 }

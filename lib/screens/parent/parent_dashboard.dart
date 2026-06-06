@@ -245,6 +245,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> with Sing
                       )
                     else
                       ...attempts.map((a) {
+                        final isGraded = a['isGraded'] ?? true;
                         final percent = (a['percentage'] as num).toDouble();
                         final isPassed = percent >= 50.0;
                         return Container(
@@ -267,21 +268,44 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> with Sing
                                       style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                                     ),
                                     const SizedBox(height: 4),
-                                    Text(
-                                      'Хол: ${a['score']}/${a['totalQuestions']}',
-                                      style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13),
-                                    ),
+                                    if (isGraded)
+                                      Text(
+                                        'Хол: ${a['score']}/${a['totalQuestions']}',
+                                        style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13),
+                                      )
+                                    else
+                                      Text(
+                                        'Ҷавобҳо қабул шуданд',
+                                        style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 13, fontStyle: FontStyle.italic),
+                                      ),
                                   ],
                                 ),
                               ),
-                              Text(
-                                '${percent.toStringAsFixed(0)}%',
-                                style: TextStyle(
-                                  color: isPassed ? Colors.teal : Colors.redAccent,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
+                              if (isGraded)
+                                Text(
+                                  '${percent.toStringAsFixed(0)}%',
+                                  style: TextStyle(
+                                    color: isPassed ? Colors.teal : Colors.redAccent,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                )
+                              else
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.amber.withOpacity(0.15),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Text(
+                                    'Дар ҳоли тафтиш',
+                                    style: TextStyle(
+                                      color: Colors.amber,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                 ),
-                              ),
                             ],
                           ),
                         );

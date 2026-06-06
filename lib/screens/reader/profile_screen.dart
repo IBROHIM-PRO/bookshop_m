@@ -1,16 +1,109 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:file_picker/file_picker.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/api_service.dart';
 import '../login_screen.dart';
-import 'my_orders_screen.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  bool _isUploading = false;
+
+  String _getFullImageUrl(String? url) {
+    if (url == null || url.isEmpty) return '';
+    if (url.startsWith('http')) return url;
+    return '${ApiService.baseUrl}$url';
+  }
+
+  String _getInitials(String name) {
+    if (name.isEmpty) return 'U';
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.length > 1) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return parts[0][0].toUpperCase();
+  }
+
+  Future<void> _pickAndUploadAvatar() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(type: FileType.image);
+      if (result == null || result.files.single.path == null) return;
+
+      final pickedFile = result.files.single;
+
+      // Enforce 1MB size limit
+      if (pickedFile.size > 1 * 1024 * 1024) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Ҳаҷми расм набояд аз 1 МБ зиёд бошад!'),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
+        return;
+      }
+
+      setState(() {
+        _isUploading = true;
+      });
+
+      final response = await ApiService.uploadAvatar(pickedFile.path!, pickedFile.name);
+      if (response.statusCode == 200) {
+        final resData = jsonDecode(response.body);
+        final imageUrl = resData['imageUrl'] as String;
+
+        if (mounted) {
+          await Provider.of<AuthProvider>(context, listen: false).updateCurrentUserImageUrl(imageUrl);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Расми профил бомуваффақият боргузорӣ шуд!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        final resData = jsonDecode(response.body);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(resData['message'] ?? 'Хатогӣ дар боргузории расм'),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Хатогии пайвастшавӣ бо сервер'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUploading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final user = Provider.of<AuthProvider>(context).currentUser;
     if (user == null) return const SizedBox.shrink();
+
+    final hasImage = user.imageUrl != null && user.imageUrl!.isNotEmpty;
 
     return Scaffold(
       backgroundColor: const Color(0xFF0F0C20),
@@ -31,34 +124,80 @@ class ProfileScreen extends StatelessWidget {
               child: Column(
                 children: [
                   // Avatar
-                  Container(
-                    width: 90,
-                    height: 90,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF7C3AED), Color(0xFF4F46E5)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.deepPurpleAccent.withOpacity(0.4),
-                          blurRadius: 20,
-                          spreadRadius: 2,
+                  Stack(
+                    children: [
+                      Container(
+                        width: 90,
+                        height: 90,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: hasImage ? null : const LinearGradient(
+                            colors: [Color(0xFF7C3AED), Color(0xFF4F46E5)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.deepPurpleAccent.withOpacity(0.4),
+                              blurRadius: 20,
+                              spreadRadius: 2,
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Text(
-                        user.name.isNotEmpty ? user.name[0].toUpperCase() : 'X',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 36,
-                          fontWeight: FontWeight.bold,
+                        child: _isUploading
+                            ? const Center(
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                ),
+                              )
+                            : ClipOval(
+                                child: hasImage
+                                    ? Image.network(
+                                        _getFullImageUrl(user.imageUrl),
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) => Center(
+                                          child: Text(
+                                            _getInitials(user.name),
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 32,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      )
+                                    : Center(
+                                        child: Text(
+                                          _getInitials(user.name),
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 32,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                              ),
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: GestureDetector(
+                          onTap: _isUploading ? null : _pickAndUploadAvatar,
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF7C3AED),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.camera_alt,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
+                    ],
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -107,20 +246,16 @@ class ProfileScreen extends StatelessWidget {
                 _buildSectionTitle('Амалҳо'),
                 const SizedBox(height: 12),
 
-                // My Orders
+                // Action to update avatar manually
                 _buildActionTile(
                   context,
-                  icon: Icons.receipt_long_outlined,
-                  label: 'Заявкаҳои ман',
-                  color: Colors.deepPurpleAccent,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const MyOrdersScreen()),
-                    );
-                  },
+                  icon: Icons.photo_library_outlined,
+                  label: 'Боргузории расми нав',
+                  color: Colors.blueAccent,
+                  onTap: _isUploading ? () {} : _pickAndUploadAvatar,
                 ),
 
-                const SizedBox(height: 36),
+                const SizedBox(height: 12),
 
                 // Logout
                 SizedBox(
@@ -197,13 +332,19 @@ class ProfileScreen extends StatelessWidget {
             child: Icon(icon, color: Colors.deepPurpleAccent, size: 20),
           ),
           const SizedBox(width: 14),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label, style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11)),
-              const SizedBox(height: 3),
-              Text(value, style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
-            ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11)),
+                const SizedBox(height: 3),
+                Text(
+                  value,
+                  style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
           ),
         ],
       ),

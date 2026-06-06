@@ -6,6 +6,7 @@ class User {
   final String role;
   final String? token;
   final int? parentId;
+  final String? imageUrl;
 
   User({
     required this.id,
@@ -15,6 +16,7 @@ class User {
     required this.role,
     this.token,
     this.parentId,
+    this.imageUrl,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -26,6 +28,7 @@ class User {
       role: json['role'] ?? '',
       token: json['token'],
       parentId: json['parentId'],
+      imageUrl: json['imageUrl'],
     );
   }
 
@@ -38,6 +41,7 @@ class User {
       'role': role,
       'token': token,
       'parentId': parentId,
+      'imageUrl': imageUrl,
     };
   }
 }

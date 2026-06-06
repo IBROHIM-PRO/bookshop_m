@@ -1,9 +1,12 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../services/api_service.dart';
 import 'register_screen.dart';
 import 'reader/reader_home.dart';
 import 'parent/parent_dashboard.dart';
+import 'teacher/teacher_dashboard.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -17,6 +20,43 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      if (authProvider.sessionExpiredMessage != null) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: const Color(0xFF15102A),
+            title: const Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
+                SizedBox(width: 8),
+                Text('Хатогӣ', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            content: Text(
+              authProvider.sessionExpiredMessage!,
+              style: const TextStyle(color: Colors.white70, fontSize: 16),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(ctx).pop();
+                },
+                child: const Text('Фаҳмо', style: TextStyle(color: Colors.deepPurpleAccent, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        );
+        authProvider.clearSessionExpiredMessage();
+      }
+    });
+  }
+
   void _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -29,17 +69,31 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
 
     if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
+      if (error.contains('Администратор')) {
+        showDialog(
+          context: context,
+          builder: (ctx) => _AdminApprovalDialog(
+            email: _emailController.text.trim(),
+            password: _passwordController.text.trim(),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
     } else {
       final role = authProvider.currentUser?.role;
       if (role == 'Parent') {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const ParentDashboardScreen()),
+        );
+      } else if (role == 'Teacher') {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const TeacherDashboardScreen()),
         );
       } else {
         Navigator.of(context).pushReplacement(
@@ -217,35 +271,149 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Аллакай саҳифа надоред? ',
-                        style: TextStyle(color: Colors.white.withOpacity(0.6)),
-                      ),
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => const RegisterScreen()),
-                          );
-                        },
-                        child: const Text(
-                          'Бақайдгирӣ',
-                          style: TextStyle(
-                            color: Colors.deepPurpleAccent,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
                 ],
               ),
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class _AdminApprovalDialog extends StatefulWidget {
+  final String email;
+  final String password;
+
+  const _AdminApprovalDialog({
+    required this.email,
+    required this.password,
+  });
+
+  @override
+  State<_AdminApprovalDialog> createState() => _AdminApprovalDialogState();
+}
+
+class _AdminApprovalDialogState extends State<_AdminApprovalDialog> {
+  bool _isLoading = false;
+  String? _statusMessage;
+
+  void _sendRequest() async {
+    setState(() {
+      _isLoading = true;
+      _statusMessage = null;
+    });
+
+    try {
+      final response = await ApiService.post(
+        '/api/auth/login/request-admin-access',
+        {
+          'email': widget.email,
+          'password': widget.password,
+        },
+      );
+
+      final resData = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        setState(() {
+          _statusMessage = resData['message'] ?? 'Дархост фиристода шуд!';
+        });
+      } else {
+        setState(() {
+          _statusMessage = resData['message'] ?? 'Хатогӣ ҳангоми фиристодани дархост';
+        });
+      }
+    } catch (_) {
+      setState(() {
+        _statusMessage = 'Хатогии пайвастшавӣ бо сервер.';
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: const Color(0xFF1E173E),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      title: const Row(
+        children: [
+          Icon(Icons.admin_panel_settings_rounded, color: Colors.amber, size: 28),
+          SizedBox(width: 10),
+          Text(
+            'Дархости доступ',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+          ),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_statusMessage == null)
+            const Text(
+              'Ин ҳисоб аллакай дар дастгоҳи дигар ворид шудааст ва дастгоҳи пештара фаъол нест. Шумо метавонед ба Администратор дархост фиристед, то сессияи пештараро тоза кунад.',
+              style: TextStyle(color: Colors.white70, fontSize: 14, height: 1.4),
+            )
+          else
+            Text(
+              _statusMessage!,
+              style: const TextStyle(color: Colors.amber, fontSize: 14, height: 1.4, fontWeight: FontWeight.bold),
+            ),
+        ],
+      ),
+      actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      actions: [
+        if (_statusMessage == null)
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: Colors.white.withOpacity(0.1)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  child: const Text('Бекор кардан', style: TextStyle(color: Colors.white70)),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _sendRequest,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.deepPurpleAccent,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        )
+                      : const Text('Фиристодан', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          )
+        else
+          Center(
+            child: ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.deepPurpleAccent,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+              child: const Text('Фаҳмо', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ),
+      ],
     );
   }
 }

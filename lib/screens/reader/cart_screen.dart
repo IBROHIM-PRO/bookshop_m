@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/book.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/theme_provider.dart';
 import '../../services/api_service.dart';
+import 'my_orders_screen.dart';
 
 // ─── Simple Cart Model ──────────────────────────────────────────────────────
 
@@ -27,6 +29,7 @@ class CartScreen extends StatefulWidget {
 
 class _CartScreenState extends State<CartScreen> {
   bool _isSubmitting = false;
+  int _subTab = 0; // 0 = Cart, 1 = Orders
   List<CartItem> get _items => widget.cartItems;
 
   double get _totalPrice =>
@@ -101,20 +104,27 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   void _showSuccessDialog() {
+    final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
+    final isBw = Provider.of<ThemeProvider>(context, listen: false).isBlackAndWhite;
+
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E173E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        backgroundColor: isBw ? Colors.black : const Color(0xFF1E173E),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: isBw ? const BorderSide(color: Colors.white24) : BorderSide.none,
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.check_circle, color: Colors.teal, size: 72),
+            Icon(Icons.check_circle, color: isBw ? Colors.white : Colors.teal, size: 72),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'Заявка фиристода шуд!',
-              style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+              style: TextStyle(color: isBw ? Colors.white : Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             Text(
@@ -132,11 +142,17 @@ class _CartScreenState extends State<CartScreen> {
                 Navigator.of(context).pop(true); // Return true = order placed
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.teal,
+                backgroundColor: primaryColor,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
               ),
-              child: const Text('Фаҳмо', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              child: Text(
+                'Фаҳмо',
+                style: TextStyle(
+                  color: isBw ? Colors.black : Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 8),
@@ -147,167 +163,251 @@ class _CartScreenState extends State<CartScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
+    final isBw = Provider.of<ThemeProvider>(context).isBlackAndWhite;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0F0C20),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF15102A),
+        backgroundColor: theme.appBarTheme.backgroundColor,
         elevation: 0,
         title: Text(
-          'Сабади харид (${_items.length})',
+          _subTab == 0 ? 'Сабади харид (${_items.length})' : 'Заявкаҳои ман',
           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: _items.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+      body: Column(
+        children: [
+          // Sub-Tab Switcher
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Container(
+              height: 48,
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.04),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white.withOpacity(0.06)),
+              ),
+              child: Row(
                 children: [
-                  Icon(Icons.shopping_cart_outlined, size: 80, color: Colors.white.withOpacity(0.2)),
-                  const SizedBox(height: 20),
-                  Text(
-                    'Сабади харид холӣ аст',
-                    style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _subTab = 0),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: _subTab == 0 ? primaryColor : Colors.transparent,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          'Сабад',
+                          style: TextStyle(
+                            color: _subTab == 0
+                                ? (isBw ? Colors.black : Colors.white)
+                                : Colors.white60,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _subTab = 1),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: _subTab == 1 ? primaryColor : Colors.transparent,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          'Заявкаҳо',
+                          style: TextStyle(
+                            color: _subTab == 1
+                                ? (isBw ? Colors.black : Colors.white)
+                                : Colors.white60,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),
-            )
-          : Column(
-              children: [
-                Expanded(
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _items.length,
-                    itemBuilder: (context, index) {
-                      final item = _items[index];
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.03),
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(color: Colors.white.withOpacity(0.06)),
-                        ),
-                        child: Row(
+            ),
+          ),
+          Expanded(
+            child: _subTab == 1
+                ? const MyOrdersScreen(showAppBar: false)
+                : _items.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            // Book cover
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(10),
-                              child: Container(
-                                width: 60,
-                                height: 80,
-                                color: Colors.white.withOpacity(0.05),
-                                child: item.book.imageUrl != null &&
-                                        item.book.imageUrl!.startsWith('http')
-                                    ? Image.network(item.book.imageUrl!, fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) =>
-                                            const Icon(Icons.book, color: Colors.white30))
-                                    : const Icon(Icons.book, color: Colors.white30, size: 30),
-                              ),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    item.book.title,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                        color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    '${item.book.price.toStringAsFixed(0)} TJS',
-                                    style: const TextStyle(color: Colors.deepPurpleAccent, fontWeight: FontWeight.bold),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Column(
-                              children: [
-                                // Quantity controls
-                                Row(
-                                  children: [
-                                    _qtyButton(Icons.remove, () => _decrement(item)),
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                                      child: Text(
-                                        '${item.quantity}',
-                                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
-                                      ),
-                                    ),
-                                    _qtyButton(Icons.add, () => _increment(item)),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                GestureDetector(
-                                  onTap: () => _remove(item),
-                                  child: const Text('Нест кардан',
-                                      style: TextStyle(color: Colors.redAccent, fontSize: 11)),
-                                ),
-                              ],
+                            Icon(Icons.shopping_cart_outlined, size: 80, color: Colors.white.withOpacity(0.2)),
+                            const SizedBox(height: 20),
+                            Text(
+                              'Сабади харид холӣ аст',
+                              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16),
                             ),
                           ],
                         ),
-                      );
-                    },
-                  ),
-                ),
-
-                // Bottom summary
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF15102A),
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(24),
-                      topRight: Radius.circular(24),
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      )
+                    : Column(
                         children: [
-                          Text('Ҷамъ (${_items.length} китоб):',
-                              style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 15)),
-                          Text(
-                            '${_totalPrice.toStringAsFixed(0)} TJS',
-                            style: const TextStyle(
-                                color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20),
+                          Expanded(
+                            child: ListView.builder(
+                              padding: const EdgeInsets.all(16),
+                              itemCount: _items.length,
+                              itemBuilder: (context, index) {
+                                final item = _items[index];
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 12),
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.03),
+                                    borderRadius: BorderRadius.circular(18),
+                                    border: Border.all(color: Colors.white.withOpacity(0.06)),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      // Book cover
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(10),
+                                        child: Container(
+                                          width: 60,
+                                          height: 80,
+                                          color: Colors.white.withOpacity(0.05),
+                                          child: item.book.imageUrl != null &&
+                                                  item.book.imageUrl!.startsWith('http')
+                                              ? Image.network(item.book.imageUrl!, fit: BoxFit.cover,
+                                                  errorBuilder: (_, __, ___) =>
+                                                      const Icon(Icons.book, color: Colors.white30))
+                                              : const Icon(Icons.book, color: Colors.white30, size: 30),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 14),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              item.book.title,
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                  color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              '${item.book.price.toStringAsFixed(0)} TJS',
+                                              style: TextStyle(
+                                                color: isBw ? Colors.white70 : Colors.deepPurpleAccent,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Column(
+                                        children: [
+                                          // Quantity controls
+                                          Row(
+                                            children: [
+                                              _qtyButton(Icons.remove, () => _decrement(item)),
+                                              Padding(
+                                                padding: const EdgeInsets.symmetric(horizontal: 12),
+                                                child: Text(
+                                                  '${item.quantity}',
+                                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                                                ),
+                                              ),
+                                              _qtyButton(Icons.add, () => _increment(item)),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 8),
+                                          GestureDetector(
+                                            onTap: () => _remove(item),
+                                            child: const Text('Нест кардан',
+                                                style: TextStyle(color: Colors.redAccent, fontSize: 11)),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+
+                          // Bottom summary
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surface,
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(24),
+                                topRight: Radius.circular(24),
+                              ),
+                              border: isBw ? Border.all(color: Colors.white10) : null,
+                            ),
+                            child: Column(
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text('Ҷамъ (${_items.length} китоб):',
+                                        style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 15)),
+                                    Text(
+                                      '${_totalPrice.toStringAsFixed(0)} TJS',
+                                      style: const TextStyle(
+                                          color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+                                SizedBox(
+                                  width: double.infinity,
+                                  height: 52,
+                                  child: ElevatedButton(
+                                    onPressed: _isSubmitting ? null : _placeOrder,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: primaryColor,
+                                      disabledBackgroundColor: primaryColor.withOpacity(0.3),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                    ),
+                                    child: _isSubmitting
+                                        ? SizedBox(
+                                            height: 22,
+                                            width: 22,
+                                            child: CircularProgressIndicator(
+                                              color: isBw ? Colors.black : Colors.white,
+                                              strokeWidth: 2,
+                                            ),
+                                          )
+                                        : Text(
+                                            '🛒  Фармоиш додан',
+                                            style: TextStyle(
+                                              color: isBw ? Colors.black : Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                            ),
+                                          ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 52,
-                        child: ElevatedButton(
-                          onPressed: _isSubmitting ? null : _placeOrder,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.teal,
-                            disabledBackgroundColor: Colors.teal.withOpacity(0.3),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          ),
-                          child: _isSubmitting
-                              ? const SizedBox(
-                                  height: 22,
-                                  width: 22,
-                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                                )
-                              : const Text(
-                                  '🛒  Фармоиш додан',
-                                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
-                                ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+          ),
+        ],
+      ),
     );
   }
 

@@ -6,6 +6,7 @@ class Book {
   final double price;
   final int stockQuantity;
   final String? imageUrl;
+  final String? pdfUrl;
   final int categoryId;
   final String categoryName;
   final String bookType; // Electronic, Printed, Both
@@ -19,6 +20,7 @@ class Book {
     required this.price,
     required this.stockQuantity,
     this.imageUrl,
+    this.pdfUrl,
     required this.categoryId,
     required this.categoryName,
     required this.bookType,
@@ -34,6 +36,7 @@ class Book {
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
       stockQuantity: json['stockQuantity'] ?? 0,
       imageUrl: json['imageUrl'],
+      pdfUrl: json['pdfUrl'],
       categoryId: json['categoryId'] ?? 0,
       categoryName: json['categoryName'] ?? '',
       bookType: json['bookType'] ?? 'Both',
