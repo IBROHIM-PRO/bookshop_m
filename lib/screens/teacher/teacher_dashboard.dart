@@ -60,7 +60,7 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
 
   Future<void> _pickAndUploadStudentAvatar(int studentId) async {
     try {
-      final result = await FilePicker.platform.pickFiles(type: FileType.image);
+      final result = await FilePicker.pickFiles(type: FileType.image);
       if (result == null || result.files.single.path == null) return;
 
       final pickedFile = result.files.single;

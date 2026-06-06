@@ -311,7 +311,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> with SingleTicker
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              '$subTest тест / $subPoints хол',
+                              '$subTests тест / $subPoints хол',
                               style: TextStyle(
                                 color: Colors.grey[600],
                                 fontSize: 9,

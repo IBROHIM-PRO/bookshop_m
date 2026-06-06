@@ -298,7 +298,7 @@ class _TestQuizScreenState extends State<TestQuizScreen> {
 
   Future<void> _pickAndUploadFile(int questionId) async {
     try {
-      final result = await FilePicker.platform.pickFiles(type: FileType.any);
+      final result = await FilePicker.pickFiles(type: FileType.any);
       if (result == null || result.files.single.path == null) return;
 
       final path = result.files.single.path!;

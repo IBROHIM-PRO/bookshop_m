@@ -33,7 +33,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _pickAndUploadAvatar() async {
     try {
-      final result = await FilePicker.platform.pickFiles(type: FileType.image);
+      final result = await FilePicker.pickFiles(type: FileType.image);
       if (result == null || result.files.single.path == null) return;
 
       final pickedFile = result.files.single;
