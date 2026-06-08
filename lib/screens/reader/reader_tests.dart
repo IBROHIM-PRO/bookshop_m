@@ -17,6 +17,11 @@ class _ReaderTestsScreenState extends State<ReaderTestsScreen> with SingleTicker
   List<TestAttemptModel> _attempts = [];
   bool _isLoading = true;
 
+  // Retry logic
+  int _retryCount = 0;
+  static const int _maxRetries = 3;
+  static const Duration _retryDelay = Duration(seconds: 1);
+
   @override
   void initState() {
     super.initState();
@@ -34,29 +39,50 @@ class _ReaderTestsScreenState extends State<ReaderTestsScreen> with SingleTicker
     setState(() {
       _isLoading = true;
     });
+    await _fetchWithRetry();
+  }
 
-    try {
-      final testsResponse = await ApiService.get('/api/tests');
-      final attemptsResponse = await ApiService.get('/api/tests/attempts');
+  Future<void> _fetchWithRetry() async {
+    int attempt = 0;
+    while (attempt < _maxRetries) {
+      try {
+        final testsResponse = await ApiService.get('/api/tests');
+        final attemptsResponse = await ApiService.get('/api/tests/attempts');
 
-      if (testsResponse.statusCode == 200 && attemptsResponse.statusCode == 200) {
-        final List testsJson = jsonDecode(testsResponse.body);
-        final List attemptsJson = jsonDecode(attemptsResponse.body);
+        if (testsResponse.statusCode == 200 && attemptsResponse.statusCode == 200) {
+          final List testsJson = jsonDecode(testsResponse.body);
+          final List attemptsJson = jsonDecode(attemptsResponse.body);
 
-        setState(() {
-          _tests = testsJson.map((t) => TestModel.fromJson(t)).toList();
-          _attempts = attemptsJson.map((a) => TestAttemptModel.fromJson(a)).toList();
-          _isLoading = false;
-        });
-      } else {
-        setState(() {
-          _isLoading = false;
-        });
+          if (!mounted) return;
+          setState(() {
+            _tests = testsJson.map((t) => TestModel.fromJson(t)).toList();
+            _attempts = attemptsJson.map((a) => TestAttemptModel.fromJson(a)).toList();
+            _isLoading = false;
+            _retryCount = 0;
+          });
+          return;
+        } else {
+          attempt++;
+          if (attempt < _maxRetries) {
+            await Future.delayed(_retryDelay);
+          } else {
+            if (!mounted) return;
+            setState(() {
+              _isLoading = false;
+            });
+          }
+        }
+      } catch (e) {
+        attempt++;
+        if (attempt < _maxRetries) {
+          await Future.delayed(_retryDelay);
+        } else {
+          if (!mounted) return;
+          setState(() {
+            _isLoading = false;
+          });
+        }
       }
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
     }
   }
 
@@ -239,13 +265,21 @@ class _ReaderTestsScreenState extends State<ReaderTestsScreen> with SingleTicker
             Tab(text: 'Натиҷаҳо'),
           ],
         ),
-        
+
         Expanded(
           child: TabBarView(
             controller: _tabController,
             children: [
-              _buildTestsList(),
-              _buildAttemptsList(),
+              RefreshIndicator(
+                onRefresh: _fetchTestData,
+                color: Colors.deepPurpleAccent,
+                child: _buildTestsList(),
+              ),
+              RefreshIndicator(
+                onRefresh: _fetchTestData,
+                color: Colors.deepPurpleAccent,
+                child: _buildAttemptsList(),
+              ),
             ],
           ),
         ),

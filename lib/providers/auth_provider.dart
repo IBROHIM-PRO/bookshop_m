@@ -6,6 +6,7 @@ import '../models/user.dart';
 import '../services/api_service.dart';
 import '../services/fcm_service.dart';
 import '../services/websocket_service.dart';
+import '../services/local_notification_service.dart';
 import '../main.dart' show navigatorKey, AuthWrapper;
 
 class AuthProvider with ChangeNotifier {
@@ -52,6 +53,13 @@ class AuthProvider with ChangeNotifier {
           (route) => false,
         );
       }
+    };
+
+    _wsService!.onNotification = (title, message) {
+      LocalNotificationService().showNotification(
+        title: title,
+        body: message,
+      );
     };
     
     _wsService!.connect(user.id, user.role);

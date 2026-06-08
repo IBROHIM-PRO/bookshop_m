@@ -24,6 +24,11 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> with SingleTicker
   // Selected student for the top dashboard card
   dynamic _selectedUser;
 
+  // Retry logic
+  int _retryCount = 0;
+  static const int _maxRetries = 3;
+  static const Duration _retryDelay = Duration(seconds: 1);
+
   @override
   void initState() {
     super.initState();
@@ -57,39 +62,52 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> with SingleTicker
       _error = null;
     });
 
-    try {
-      final response = await ApiService.get('/api/leaderboard');
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (!mounted) return;
-        setState(() {
-          _myGroupName = data['myGroupName'] ?? 'Муайян нашудааст';
-          _myRank = data['myRank'] ?? 0;
-          _myPoints = data['myPoints'] ?? 0;
-          _top10Overall = data['top10Overall'] ?? [];
-          _top3MyGroup = data['top3MyGroup'] ?? [];
+    await _fetchWithRetry();
+  }
 
-          final currentList = _tabController.index == 0 ? _top10Overall : _top3MyGroup;
-          if (currentList.isNotEmpty) {
-            _selectedUser = currentList.first;
+  Future<void> _fetchWithRetry() async {
+    int attempt = 0;
+    while (attempt < _maxRetries) {
+      try {
+        final response = await ApiService.get('/api/leaderboard');
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          if (!mounted) return;
+          setState(() {
+            _myGroupName = data['myGroupName'] ?? 'Муайян нашудааст';
+            _myRank = data['myRank'] ?? 0;
+            _myPoints = data['myPoints'] ?? 0;
+            _top10Overall = data['top10Overall'] ?? [];
+            _top3MyGroup = data['top3MyGroup'] ?? [];
+
+            final currentList = _tabController.index == 0 ? _top10Overall : _top3MyGroup;
+            if (currentList.isNotEmpty) {
+              _selectedUser = currentList.first;
+            }
+
+            _isLoading = false;
+            _retryCount = 0;
+          });
+          return;
+        } else {
+          attempt++;
+          if (attempt < _maxRetries) {
+            await Future.delayed(_retryDelay);
           }
-
-          _isLoading = false;
-        });
-      } else {
-        if (!mounted) return;
-        setState(() {
-          _error = 'Хатогӣ дар боркунии маълумоти пешсафон.';
-          _isLoading = false;
-        });
+        }
+      } catch (e) {
+        attempt++;
+        if (attempt < _maxRetries) {
+          await Future.delayed(_retryDelay);
+        }
       }
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = 'Хатогӣ дар пайвастшавӣ ба сервер.';
-        _isLoading = false;
-      });
     }
+
+    if (!mounted) return;
+    setState(() {
+      _error = 'Хатогӣ дар пайвастшавӣ ба сервер. Лутфан баъд аз каме кӯшиш кунед.';
+      _isLoading = false;
+    });
   }
 
   String _getRankText(int rank) {
@@ -103,40 +121,14 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> with SingleTicker
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: IconButton(
-              padding: EdgeInsets.zero,
-              icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-          ),
           const Text(
             'Рӯйхати пешсафон',
             style: TextStyle(
               color: Colors.white,
               fontSize: 20,
               fontWeight: FontWeight.bold,
-            ),
-          ),
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: IconButton(
-              padding: EdgeInsets.zero,
-              icon: const Icon(Icons.home_outlined, color: Colors.white, size: 22),
-              onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
             ),
           ),
         ],
@@ -230,7 +222,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> with SingleTicker
           ),
           const SizedBox(height: 4),
           Text(
-            'Натиҷаи умумӣ: +$points хол ($averagePercentage%)',
+            'Натиҷаи умумӣ: ($averagePercentage%)',
             style: TextStyle(
               color: Colors.deepPurple[400],
               fontSize: 13,
@@ -496,8 +488,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> with SingleTicker
                       ),
                       const SizedBox(height: 2),
                       Row(
-                        children: [
-                          Icon(Icons.monetization_on_outlined, color: Colors.amber[700], size: 12),
+                        children: [                        
                           const SizedBox(width: 4),
                           Text(
                             '$points хол',
@@ -572,55 +563,59 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> with SingleTicker
     }
 
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: isBw
-              ? null
-              : const LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0xFF311B92),
-                    Color(0xFF512DA8),
-                  ],
-                ),
-          color: isBw ? Colors.white : null,
-        ),
-        child: SafeArea(
-          bottom: false,
-          child: Column(
-            children: [
-              _buildTopAppBar(isBw),
-              _buildTopStatsCard(isBw),
-              const SizedBox(height: 16),
-              Expanded(
-                child: Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: isBw ? const Color(0xFFF9F9F9) : Colors.white,
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(30),
-                      topRight: Radius.circular(30),
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      _buildTabBar(isBw),
-                      _buildColumnHeaders(isBw),
-                      Expanded(
-                        child: TabBarView(
-                          controller: _tabController,
-                          children: [
-                            _buildLeaderboardList(_top10Overall, isBw),
-                            _buildLeaderboardList(_top3MyGroup, isBw),
-                          ],
-                        ),
-                      ),
+      body: RefreshIndicator(
+        onRefresh: _fetchLeaderboardData,
+        color: Colors.deepPurpleAccent,
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: isBw
+                ? null
+                : const LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Color(0xFF311B92),
+                      Color(0xFF512DA8),
                     ],
                   ),
+            color: isBw ? Colors.white : null,
+          ),
+          child: SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                _buildTopAppBar(isBw),
+                _buildTopStatsCard(isBw),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: isBw ? const Color(0xFFF9F9F9) : Colors.white,
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(30),
+                        topRight: Radius.circular(30),
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        _buildTabBar(isBw),
+                        _buildColumnHeaders(isBw),
+                        Expanded(
+                          child: TabBarView(
+                            controller: _tabController,
+                            children: [
+                              _buildLeaderboardList(_top10Overall, isBw),
+                              _buildLeaderboardList(_top3MyGroup, isBw),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

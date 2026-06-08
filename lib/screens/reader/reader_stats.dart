@@ -28,6 +28,11 @@ class _ReaderStatsScreenState extends State<ReaderStatsScreen> {
   DateTime? _customStartDate;
   DateTime? _customEndDate;
 
+  // Retry logic
+  int _retryCount = 0;
+  static const int _maxRetries = 3;
+  static const Duration _retryDelay = Duration(seconds: 1);
+
   @override
   void initState() {
     super.initState();
@@ -40,66 +45,84 @@ class _ReaderStatsScreenState extends State<ReaderStatsScreen> {
       _isLoading = true;
       _error = null;
     });
+    await _fetchWithRetry();
+  }
 
-    try {
-      String url = '/api/stats/dashboard';
-      if (_customStartDate != null && _customEndDate != null) {
-        final startIso = _customStartDate!.toUtc().toIso8601String();
-        final endIso = _customEndDate!.toUtc().toIso8601String();
-        url += '?startDate=$startIso&endDate=$endIso';
-      } else {
-        url += '?preset=$_activePreset';
-      }
-
-      final response = await ApiService.get(url);
-      debugPrint('GET $url -> status: ${response.statusCode}, body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final List attemptsJson = data['testAttempts'] ?? [];
-        final attempts = attemptsJson.map((a) => TestAttemptModel.fromJson(a)).toList();
-
-        final List<dynamic> weeklyStreakJson = data['weeklyStreakDays'] ?? [];
-        final weeklyStreak = weeklyStreakJson.map((x) => x as bool).toList();
-
-        final List<dynamic> lessonsLearnedJson = data['lessonsLearned'] ?? [];
-        final lessons = lessonsLearnedJson.map((x) => (x as num).toDouble()).toList();
-
-        if (!mounted) return;
-        setState(() {
-          _attempts = attempts;
-          _booksCount = data['booksCount'] ?? 0;
-          _averageScore = (data['averageScore'] ?? 0.0).toDouble();
-          _dailyStreak = data['dailyStreak'] ?? 0;
-          _weeklyStreakDays = weeklyStreak.length == 7 ? weeklyStreak : [false, false, false, false, false, false, false];
-          _lessonsLearned = lessons.length == 7 ? lessons : [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
-          _isLoading = false;
-        });
-      } else {
-        if (!mounted) return;
-        String msg = 'Хатогӣ дар боркунии маълумот.';
-        if (response.statusCode == 401) {
-          msg = 'Сессия ба охир расид. Лутфан аз нав ворид шавед.';
-        } else if (response.body.isNotEmpty) {
-          try {
-            final resData = jsonDecode(response.body);
-            if (resData['message'] != null) {
-              msg = resData['message'];
-            }
-          } catch (_) {}
+  Future<void> _fetchWithRetry() async {
+    int attempt = 0;
+    while (attempt < _maxRetries) {
+      try {
+        String url = '/api/stats/dashboard';
+        if (_customStartDate != null && _customEndDate != null) {
+          final startIso = _customStartDate!.toUtc().toIso8601String();
+          final endIso = _customEndDate!.toUtc().toIso8601String();
+          url += '?startDate=$startIso&endDate=$endIso';
+        } else {
+          url += '?preset=$_activePreset';
         }
-        setState(() {
-          _error = msg;
-          _isLoading = false;
-        });
+
+        final response = await ApiService.get(url);
+        debugPrint('GET $url -> status: ${response.statusCode}, body: ${response.body}');
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          final List attemptsJson = data['testAttempts'] ?? [];
+          final attempts = attemptsJson.map((a) => TestAttemptModel.fromJson(a)).toList();
+
+          final List<dynamic> weeklyStreakJson = data['weeklyStreakDays'] ?? [];
+          final weeklyStreak = weeklyStreakJson.map((x) => x as bool).toList();
+
+          final List<dynamic> lessonsLearnedJson = data['lessonsLearned'] ?? [];
+          final lessons = lessonsLearnedJson.map((x) => (x as num).toDouble()).toList();
+
+          if (!mounted) return;
+          setState(() {
+            _attempts = attempts;
+            _booksCount = data['booksCount'] ?? 0;
+            _averageScore = (data['averageScore'] ?? 0.0).toDouble();
+            _dailyStreak = data['dailyStreak'] ?? 0;
+            _weeklyStreakDays = weeklyStreak.length == 7 ? weeklyStreak : [false, false, false, false, false, false, false];
+            _lessonsLearned = lessons.length == 7 ? lessons : [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
+            _isLoading = false;
+            _retryCount = 0;
+          });
+          return;
+        } else {
+          attempt++;
+          if (attempt < _maxRetries) {
+            await Future.delayed(_retryDelay);
+          } else {
+            if (!mounted) return;
+            String msg = 'Хатогӣ дар боркунии маълумот.';
+            if (response.statusCode == 401) {
+              msg = 'Сессия ба охир расид. Лутфан аз нав ворид шавед.';
+            } else if (response.body.isNotEmpty) {
+              try {
+                final resData = jsonDecode(response.body);
+                if (resData['message'] != null) {
+                  msg = resData['message'];
+                }
+              } catch (_) {}
+            }
+            setState(() {
+              _error = msg;
+              _isLoading = false;
+            });
+          }
+        }
+      } catch (e) {
+        debugPrint('Stats fetch error: $e');
+        attempt++;
+        if (attempt < _maxRetries) {
+          await Future.delayed(_retryDelay);
+        } else {
+          if (!mounted) return;
+          setState(() {
+            _error = 'Хатогӣ дар пайвастшавӣ ба сервер: ${e.toString()}';
+            _isLoading = false;
+          });
+        }
       }
-    } catch (e) {
-      debugPrint('Stats fetch error: $e');
-      if (!mounted) return;
-      setState(() {
-        _error = 'Хатогӣ дар пайвастшавӣ ба сервер: ${e.toString()}';
-        _isLoading = false;
-      });
     }
   }
 

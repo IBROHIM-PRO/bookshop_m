@@ -12,6 +12,8 @@ import 'profile_screen.dart';
 import 'cart_screen.dart';
 import 'reader_stats.dart';
 import 'my_books_screen.dart';
+import 'leaderboard_screen.dart';
+import '../../widgets/book_3d.dart';
 
 class ReaderHomeScreen extends StatefulWidget {
   const ReaderHomeScreen({super.key});
@@ -32,6 +34,11 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
   // Cart state — managed here and shared to CartScreen
   final List<CartItem> _cartItems = [];
 
+  // Retry logic
+  int _retryCount = 0;
+  static const int _maxRetries = 3;
+  static const Duration _retryDelay = Duration(seconds: 1);
+
   @override
   void initState() {
     super.initState();
@@ -40,24 +47,46 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
 
   Future<void> _fetchData() async {
     setState(() => _isLoading = true);
-    try {
-      final booksResponse = await ApiService.get('/api/books?pageSize=50');
-      final catsResponse = await ApiService.get('/api/categories');
+    await _fetchWithRetry();
+  }
 
-      if (booksResponse.statusCode == 200 && catsResponse.statusCode == 200) {
-        final booksData = jsonDecode(booksResponse.body);
-        final catsData = jsonDecode(catsResponse.body);
+  Future<void> _fetchWithRetry() async {
+    int attempt = 0;
+    while (attempt < _maxRetries) {
+      try {
+        final booksResponse = await ApiService.get('/api/books?pageSize=50');
+        final catsResponse = await ApiService.get('/api/categories');
 
-        setState(() {
-          _books = (booksData['items'] as List).map((b) => Book.fromJson(b)).toList();
-          _categories = catsData is List ? catsData : catsData['items'] ?? [];
-          _isLoading = false;
-        });
-      } else {
-        setState(() => _isLoading = false);
+        if (booksResponse.statusCode == 200 && catsResponse.statusCode == 200) {
+          final booksData = jsonDecode(booksResponse.body);
+          final catsData = jsonDecode(catsResponse.body);
+
+          if (!mounted) return;
+          setState(() {
+            _books = (booksData['items'] as List).map((b) => Book.fromJson(b)).toList();
+            _categories = catsData is List ? catsData : catsData['items'] ?? [];
+            _isLoading = false;
+            _retryCount = 0;
+          });
+          return;
+        } else {
+          attempt++;
+          if (attempt < _maxRetries) {
+            await Future.delayed(_retryDelay);
+          } else {
+            if (!mounted) return;
+            setState(() => _isLoading = false);
+          }
+        }
+      } catch (e) {
+        attempt++;
+        if (attempt < _maxRetries) {
+          await Future.delayed(_retryDelay);
+        } else {
+          if (!mounted) return;
+          setState(() => _isLoading = false);
+        }
       }
-    } catch (e) {
-      setState(() => _isLoading = false);
     }
   }
 
@@ -164,10 +193,14 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
             ),
           ),
         ),
-        
+
         Expanded(
           child: _librarySubTab == 0
-              ? _buildShopContent()
+              ? RefreshIndicator(
+                  onRefresh: _fetchData,
+                  color: primaryColor,
+                  child: _buildShopContent(),
+                )
               : const MyBooksScreen(showAppBar: false),
         ),
       ],
@@ -279,18 +312,16 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Expanded(
-                                        child: ClipRRect(
-                                          borderRadius: BorderRadius.circular(12),
-                                          child: Container(
-                                            color: Colors.white.withOpacity(0.05),
-                                            child: book.imageUrl != null && book.imageUrl!.startsWith('http')
-                                                ? Image.network(
-                                                    book.imageUrl!,
-                                                    fit: BoxFit.cover,
-                                                    width: double.infinity,
-                                                    errorBuilder: (_, __, ___) => const Icon(Icons.book, color: Colors.white30, size: 40),
-                                                  )
-                                                : const Center(child: Icon(Icons.book, color: Colors.white30, size: 40)),
+                                        child: Center(
+                                          child: Padding(
+                                            padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
+                                            child: Book3D(
+                                              imageUrl: book.imageUrl,
+                                              title: book.title,
+                                              width: 85,
+                                              height: 125,
+                                              depth: 15,
+                                            ),
                                           ),
                                         ),
                                       ),
@@ -461,20 +492,16 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
                             Expanded(
                               child: Stack(
                                 children: [
-                                  ClipRRect(
-                                    borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                                    child: Container(
-                                      width: double.infinity,
-                                      color: Colors.white.withOpacity(0.05),
-                                      child: book.imageUrl != null && book.imageUrl!.startsWith('http')
-                                          ? Image.network(
-                                              book.imageUrl!,
-                                              fit: BoxFit.cover,
-                                              width: double.infinity,
-                                              height: double.infinity,
-                                              errorBuilder: (_, __, ___) => const Icon(Icons.book, color: Colors.white30, size: 40),
-                                            )
-                                          : const Center(child: Icon(Icons.book, color: Colors.white30, size: 40)),
+                                  Center(
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
+                                      child: Book3D(
+                                        imageUrl: book.imageUrl,
+                                        title: book.title,
+                                        width: 100,
+                                        height: 145,
+                                        depth: 18,
+                                      ),
                                     ),
                                   ),
                                   Positioned(
@@ -600,6 +627,7 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
       _buildLibraryTab(),
       const ReaderTestsScreen(),
       const ReaderStatsScreen(),
+      const LeaderboardScreen(),
       const ProfileScreen(),
     ];
 
@@ -614,10 +642,6 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
             Text(
               'Салом, $userName!',
               style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            Text(
-              'Мутолиаи хушро таманно дорем',
-              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
             ),
           ],
         ),
@@ -713,7 +737,8 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
               _buildBottomNavItem(0, Icons.library_books, 'Китобхона', theme),
               _buildBottomNavItem(1, Icons.assignment_turned_in, 'Тестҳо', theme),
               _buildBottomNavItem(2, Icons.bar_chart, 'Омор', theme),
-              _buildBottomNavItem(3, Icons.person_outline, 'Профил', theme),
+              _buildBottomNavItem(3, Icons.leaderboard_outlined, 'Рейтинг', theme),
+              _buildBottomNavItem(4, Icons.person_outline, 'Профил', theme),
             ],
           ),
         ),

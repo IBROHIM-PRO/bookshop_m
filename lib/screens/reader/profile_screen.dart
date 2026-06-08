@@ -242,19 +242,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _buildInfoCard(Icons.phone_outlined, 'Телефон', user.phone!),
                 _buildInfoCard(Icons.badge_outlined, 'Нақш', _roleLabel(user.role)),
 
-                const SizedBox(height: 28),
-                _buildSectionTitle('Амалҳо'),
-                const SizedBox(height: 12),
-
-                // Action to update avatar manually
-                _buildActionTile(
-                  context,
-                  icon: Icons.photo_library_outlined,
-                  label: 'Боргузории расми нав',
-                  color: Colors.blueAccent,
-                  onTap: _isUploading ? () {} : _pickAndUploadAvatar,
-                ),
-
+              
                 const SizedBox(height: 12),
 
                 // Logout

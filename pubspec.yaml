@@ -44,6 +44,8 @@ dependencies:
   path_provider: ^2.1.5
   file_picker: ^11.0.2
   url_launcher: ^6.3.2
+  syncfusion_flutter_pdfviewer: ^33.2.10
+  flutter_local_notifications: ^22.0.0
 
 dependency_overrides:
   web: ^1.1.1

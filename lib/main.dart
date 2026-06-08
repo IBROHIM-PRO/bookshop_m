@@ -8,10 +8,13 @@ import 'screens/parent/parent_dashboard.dart';
 import 'screens/teacher/teacher_dashboard.dart';
 import 'services/fcm_service.dart';
 
+import 'services/local_notification_service.dart';
+
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await LocalNotificationService().init();
   await FcmService().init();
   runApp(const MyApp());
 }
@@ -102,55 +105,73 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class AuthWrapper extends StatelessWidget {
+// ✅ ИСЛОҲ: StatelessWidget -> StatefulWidget
+class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context);
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
 
+class _AuthWrapperState extends State<AuthWrapper> {
+  // ✅ Future як маротиба дар initState сохта мешавад
+  late final Future<bool> _autoLoginFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    // listen: false — чунки мо дар initState ҳастем, на build
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    _autoLoginFuture = authProvider.tryAutoLogin();
+  }
+
+  Widget _buildHomeByRole(String? role) {
+    if (role == 'Parent') return const ParentDashboardScreen();
+    if (role == 'Teacher') return const TeacherDashboardScreen();
+    return const ReaderHomeScreen();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // ✅ listen: true — барои ба навшавии authProvider вокуниш нишон додан
+    final authProvider = Provider.of<AuthProvider>(context);
+    // ✅ listen: false — танҳо барои хондани rang, rebuild лозим нест
+    final isBw = Provider.of<ThemeProvider>(context, listen: false).isBlackAndWhite;
+
+    // Агар аллакай authentication шуда бошад — фавран ба home гузар
     if (authProvider.isAuthenticated) {
-      final role = authProvider.currentUser?.role;
-      if (role == 'Parent') {
-        return const ParentDashboardScreen();
-      } else if (role == 'Teacher') {
-        return const TeacherDashboardScreen();
-      } else {
-        return const ReaderHomeScreen();
-      }
+      return _buildHomeByRole(authProvider.currentUser?.role);
     }
 
     return FutureBuilder<bool>(
-      future: authProvider.tryAutoLogin(),
+      // ✅ _autoLoginFuture — ҳамеша ҳамон Future, нав сохта намешавад
+      future: _autoLoginFuture,
       builder: (context, snapshot) {
+        // Лоадинг
         if (snapshot.connectionState == ConnectionState.waiting) {
-          final isBw = Provider.of<ThemeProvider>(context).isBlackAndWhite;
           return Scaffold(
             backgroundColor: isBw ? Colors.black : const Color(0xFF0F0C20),
             body: Center(
-              child: CircularProgressIndicator(color: isBw ? Colors.white : Colors.deepPurpleAccent),
+              child: CircularProgressIndicator(
+                color: isBw ? Colors.white : Colors.deepPurpleAccent,
+              ),
             ),
           );
         }
 
+        // Auto-login муваффақ шуд
         if (snapshot.data == true) {
-          final role = authProvider.currentUser?.role;
-          if (role == 'Parent') {
-            return const ParentDashboardScreen();
-          } else if (role == 'Teacher') {
-            return const TeacherDashboardScreen();
-          } else {
-            return const ReaderHomeScreen();
-          }
+          return _buildHomeByRole(authProvider.currentUser?.role);
         }
 
+        // Auto-login нашуд — login screen
         return const LoginScreen();
       },
     );
   }
 }
 
-// Helper to construct button styles without using deprecated methods
+// Helper барои button style
 ButtonStyle ElevatedButtonThemeFrom({
   required Color backgroundColor,
   required Color foregroundColor,

@@ -14,11 +14,13 @@ class ApiService {
     }
     try {
       if (Platform.isAndroid) {
-        return 'http://192.168.0.105:5179';
+          //return 'http://10.74.7.83:5179';
+          return 'http://192.168.0.105:5179';
       }
     } catch (e) {
       // Platform check throws on web
     }
+    //return 'http://10.74.7.83:5179';
     return 'http://192.168.0.105:5179';
   }
 

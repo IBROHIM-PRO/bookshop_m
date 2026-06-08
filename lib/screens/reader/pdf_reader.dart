@@ -3,9 +3,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
-import 'package:pdfrx/pdfrx.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart'; // Пакети нав
 import '../../models/book.dart';
 import '../../providers/theme_provider.dart';
 import '../../services/api_service.dart';
@@ -24,12 +24,21 @@ class _PdfReaderScreenState extends State<PdfReaderScreen> {
   String? _error;
   String? _localFilePath;
   double _downloadProgress = 0.0;
-  int _currentPageIndex = 0;
+  
+  // Контроллер барои назорати саҳифаҳо агар лозим шавад
+  late PdfViewerController _pdfViewerController;
 
   @override
   void initState() {
     super.initState();
+    _pdfViewerController = PdfViewerController();
     _downloadPdf();
+  }
+
+  @override
+  void dispose() {
+    _pdfViewerController.dispose();
+    super.dispose();
   }
 
   Future<void> _downloadPdf() async {
@@ -45,7 +54,6 @@ class _PdfReaderScreenState extends State<PdfReaderScreen> {
       _isLoading = true;
       _error = null;
       _downloadProgress = 0.0;
-      _currentPageIndex = 0;
     });
 
     try {
@@ -161,7 +169,7 @@ class _PdfReaderScreenState extends State<PdfReaderScreen> {
               Text(
                 _downloadProgress > 0
                     ? 'Боргирии китоб: ${(_downloadProgress * 100).toStringAsFixed(0)}%'
-                    : 'Пайвастшавӣ ба сервер...',
+                    : '',
                 style: TextStyle(color: textColor, fontSize: 16),
               ),
             ],
@@ -199,66 +207,13 @@ class _PdfReaderScreenState extends State<PdfReaderScreen> {
         ),
       );
     } else {
-      body = PdfDocumentViewBuilder.file(
-        _localFilePath!,
-        builder: (context, document) {
-          if (document == null) {
-            return Center(
-              child: CircularProgressIndicator(color: primaryColor),
-            );
-          }
-          return Stack(
-            children: [
-              PageView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: document.pages.length,
-                onPageChanged: (pageIndex) {
-                  setState(() {
-                    _currentPageIndex = pageIndex;
-                  });
-                },
-                itemBuilder: (context, index) {
-                  return InteractiveViewer(
-                    maxScale: 4.0,
-                    minScale: 1.0,
-                    child: Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(12.0),
-                        child: PdfPageView(
-                          document: document,
-                          pageNumber: index + 1,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-              Positioned(
-                bottom: 24,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.7),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.white.withOpacity(0.1)),
-                    ),
-                    child: Text(
-                      'Саҳифаи ${_currentPageIndex + 1} аз ${document.pages.length}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          );
-        },
+      // Истифодаи SfPdfViewer, ки ҳама корро худкор иҷро мекунад
+      body = SfPdfViewer.file(
+        File(_localFilePath!),
+        controller: _pdfViewerController,
+        canShowScrollHead: true, // Нишон додани тугмаи ҳаракати зуд
+        canShowScrollStatus: true, // Худкор нишон додани "Саҳифаи X аз Y" ҳангоми скролл
+        enableDoubleTapZooming: true, // Зум бо ду бор пахш кардан
       );
     }
 

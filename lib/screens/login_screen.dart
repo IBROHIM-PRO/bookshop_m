@@ -19,11 +19,13 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _isPasswordVisible = false; // ✅ паролро нишон додан/пинҳон кардан
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return; // ✅ mounted санҷиш
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       if (authProvider.sessionExpiredMessage != null) {
         showDialog(
@@ -35,7 +37,10 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
                 SizedBox(width: 8),
-                Text('Хатогӣ', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                Text(
+                  'Хатогӣ',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
               ],
             ),
             content: Text(
@@ -46,15 +51,35 @@ class _LoginScreenState extends State<LoginScreen> {
               TextButton(
                 onPressed: () {
                   Navigator.of(ctx).pop();
+                  authProvider.clearSessionExpiredMessage(); // ✅ pop баъд тоза кун
                 },
-                child: const Text('Фаҳмо', style: TextStyle(color: Colors.deepPurpleAccent, fontWeight: FontWeight.bold)),
+                child: const Text(
+                  'Фаҳмо',
+                  style: TextStyle(
+                    color: Colors.deepPurpleAccent,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ],
           ),
         );
-        authProvider.clearSessionExpiredMessage();
       }
     });
+  }
+
+  @override
+  void dispose() {
+    // ✅ controller-ҳо dispose шаванд — memory leak пешгирӣ
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Widget _buildHomeByRole(String? role) {
+    if (role == 'Parent') return const ParentDashboardScreen();
+    if (role == 'Teacher') return const TeacherDashboardScreen();
+    return const ReaderHomeScreen();
   }
 
   void _submit() async {
@@ -66,7 +91,7 @@ class _LoginScreenState extends State<LoginScreen> {
       _passwordController.text.trim(),
     );
 
-    if (!mounted) return;
+    if (!mounted) return; // ✅ async баъд mounted санҷиш
 
     if (error != null) {
       if (error.contains('Администратор')) {
@@ -82,24 +107,17 @@ class _LoginScreenState extends State<LoginScreen> {
           SnackBar(
             content: Text(error),
             backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating, // ✅ беҳтар намоиш
           ),
         );
       }
     } else {
-      final role = authProvider.currentUser?.role;
-      if (role == 'Parent') {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const ParentDashboardScreen()),
-        );
-      } else if (role == 'Teacher') {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const TeacherDashboardScreen()),
-        );
-      } else {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const ReaderHomeScreen()),
-        );
-      }
+      // ✅ pushReplacement — login screen stack-да намонад
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => _buildHomeByRole(authProvider.currentUser?.role),
+        ),
+      );
     }
   }
 
@@ -124,7 +142,7 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Logo / Icon
+                  // Logo
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -157,7 +175,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 48),
-                  // Glass container for forms
+                  // Glass form container
                   Container(
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
@@ -170,15 +188,19 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     child: Column(
                       children: [
-                        // Email Field
+                        // Email
                         TextFormField(
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
                           style: const TextStyle(color: Colors.white),
+                          textInputAction: TextInputAction.next, // ✅ next баъди email
                           decoration: InputDecoration(
                             labelText: 'Почтаи электронӣ (Email)',
                             labelStyle: TextStyle(color: Colors.white.withOpacity(0.6)),
-                            prefixIcon: const Icon(Icons.email_outlined, color: Colors.deepPurpleAccent),
+                            prefixIcon: const Icon(
+                              Icons.email_outlined,
+                              color: Colors.deepPurpleAccent,
+                            ),
                             filled: true,
                             fillColor: Colors.white.withOpacity(0.05),
                             enabledBorder: OutlineInputBorder(
@@ -187,7 +209,10 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(16),
-                              borderSide: const BorderSide(color: Colors.deepPurpleAccent, width: 2),
+                              borderSide: const BorderSide(
+                                color: Colors.deepPurpleAccent,
+                                width: 2,
+                              ),
                             ),
                             errorBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(16),
@@ -206,15 +231,34 @@ class _LoginScreenState extends State<LoginScreen> {
                           },
                         ),
                         const SizedBox(height: 20),
-                        // Password Field
+                        // Password
                         TextFormField(
                           controller: _passwordController,
-                          obscureText: true,
+                          obscureText: !_isPasswordVisible, // ✅ toggle
                           style: const TextStyle(color: Colors.white),
+                          textInputAction: TextInputAction.done, // ✅ done — submit
+                          onFieldSubmitted: (_) => isLoading ? null : _submit(),
                           decoration: InputDecoration(
                             labelText: 'Парол',
                             labelStyle: TextStyle(color: Colors.white.withOpacity(0.6)),
-                            prefixIcon: const Icon(Icons.lock_outline, color: Colors.deepPurpleAccent),
+                            prefixIcon: const Icon(
+                              Icons.lock_outline,
+                              color: Colors.deepPurpleAccent,
+                            ),
+                            // ✅ Паролро нишон додан/пинҳон кардан тугмача
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _isPasswordVisible
+                                    ? Icons.visibility_off_outlined
+                                    : Icons.visibility_outlined,
+                                color: Colors.white38,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _isPasswordVisible = !_isPasswordVisible;
+                                });
+                              },
+                            ),
                             filled: true,
                             fillColor: Colors.white.withOpacity(0.05),
                             enabledBorder: OutlineInputBorder(
@@ -223,7 +267,10 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(16),
-                              borderSide: const BorderSide(color: Colors.deepPurpleAccent, width: 2),
+                              borderSide: const BorderSide(
+                                color: Colors.deepPurpleAccent,
+                                width: 2,
+                              ),
                             ),
                             errorBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(16),
@@ -242,7 +289,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           },
                         ),
                         const SizedBox(height: 32),
-                        // Submit Button
+                        // Submit button
                         SizedBox(
                           width: double.infinity,
                           height: 56,
@@ -256,7 +303,14 @@ class _LoginScreenState extends State<LoginScreen> {
                               elevation: 4,
                             ),
                             child: isLoading
-                                ? const CircularProgressIndicator(color: Colors.white)
+                                ? const SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2.5,
+                                    ),
+                                  )
                                 : const Text(
                                     'Ворид шудан',
                                     style: TextStyle(
@@ -297,6 +351,7 @@ class _AdminApprovalDialog extends StatefulWidget {
 class _AdminApprovalDialogState extends State<_AdminApprovalDialog> {
   bool _isLoading = false;
   String? _statusMessage;
+  bool _isSuccess = false; // ✅ хато ё муваффақ фарқ кунем
 
   void _sendRequest() async {
     setState(() {
@@ -313,24 +368,27 @@ class _AdminApprovalDialogState extends State<_AdminApprovalDialog> {
         },
       );
 
-      final resData = jsonDecode(response.body);
-      if (response.statusCode == 200) {
-        setState(() {
-          _statusMessage = resData['message'] ?? 'Дархост фиристода шуд!';
-        });
-      } else {
-        setState(() {
-          _statusMessage = resData['message'] ?? 'Хатогӣ ҳангоми фиристодани дархост';
-        });
-      }
-    } catch (_) {
+      if (!mounted) return; // ✅ mounted санҷиш
+
+      final resData = jsonDecode(response.body) as Map<String, dynamic>;
+      final message = resData['message'] as String?;
+
       setState(() {
+        _isSuccess = response.statusCode == 200;
+        _statusMessage = _isSuccess
+            ? (message ?? 'Дархост муваффақона фиристода шуд!')
+            : (message ?? 'Хатогӣ ҳангоми фиристодани дархост');
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isSuccess = false;
         _statusMessage = 'Хатогии пайвастшавӣ бо сервер.';
       });
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -345,7 +403,11 @@ class _AdminApprovalDialogState extends State<_AdminApprovalDialog> {
           SizedBox(width: 10),
           Text(
             'Дархости доступ',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+            ),
           ),
         ],
       ),
@@ -355,13 +417,20 @@ class _AdminApprovalDialogState extends State<_AdminApprovalDialog> {
         children: [
           if (_statusMessage == null)
             const Text(
-              'Ин ҳисоб аллакай дар дастгоҳи дигар ворид шудааст ва дастгоҳи пештара фаъол нест. Шумо метавонед ба Администратор дархост фиристед, то сессияи пештараро тоза кунад.',
+              'Ин ҳисоб аллакай дар дастгоҳи дигар ворид шудааст ва дастгоҳи пештара фаъол нест. '
+              'Шумо метавонед ба Администратор дархост фиристед, то сессияи пештараро тоза кунад.',
               style: TextStyle(color: Colors.white70, fontSize: 14, height: 1.4),
             )
           else
             Text(
               _statusMessage!,
-              style: const TextStyle(color: Colors.amber, fontSize: 14, height: 1.4, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                // ✅ ранги хато ва муваффақ фарқ кунад
+                color: _isSuccess ? Colors.greenAccent : Colors.redAccent,
+                fontSize: 14,
+                height: 1.4,
+                fontWeight: FontWeight.bold,
+              ),
             ),
         ],
       ),
@@ -378,7 +447,10 @@ class _AdminApprovalDialogState extends State<_AdminApprovalDialog> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
-                  child: const Text('Бекор кардан', style: TextStyle(color: Colors.white70)),
+                  child: const Text(
+                    'Бекор кардан',
+                    style: TextStyle(color: Colors.white70),
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -394,9 +466,18 @@ class _AdminApprovalDialogState extends State<_AdminApprovalDialog> {
                       ? const SizedBox(
                           width: 16,
                           height: 16,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
                         )
-                      : const Text('Фиристодан', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      : const Text(
+                          'Фиристодан',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
               ),
             ],
@@ -410,7 +491,10 @@ class _AdminApprovalDialogState extends State<_AdminApprovalDialog> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               ),
-              child: const Text('Фаҳмо', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              child: const Text(
+                'Фаҳмо',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
             ),
           ),
       ],

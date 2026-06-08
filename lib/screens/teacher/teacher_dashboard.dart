@@ -65,7 +65,6 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
 
       final pickedFile = result.files.single;
 
-      // Enforce 1MB size limit
       if (pickedFile.size > 1 * 1024 * 1024) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -133,14 +132,10 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
           _isLoadingStudents = false;
         });
       } else {
-        setState(() {
-          _isLoadingStudents = false;
-        });
+        setState(() => _isLoadingStudents = false);
       }
     } catch (e) {
-      setState(() {
-        _isLoadingStudents = false;
-      });
+      setState(() => _isLoadingStudents = false);
     }
   }
 
@@ -156,14 +151,10 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
           _isLoadingTests = false;
         });
       } else {
-        setState(() {
-          _isLoadingTests = false;
-        });
+        setState(() => _isLoadingTests = false);
       }
     } catch (e) {
-      setState(() {
-        _isLoadingTests = false;
-      });
+      setState(() => _isLoadingTests = false);
     }
   }
 
@@ -179,14 +170,10 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
           _isLoadingAttempts = false;
         });
       } else {
-        setState(() {
-          _isLoadingAttempts = false;
-        });
+        setState(() => _isLoadingAttempts = false);
       }
     } catch (e) {
-      setState(() {
-        _isLoadingAttempts = false;
-      });
+      setState(() => _isLoadingAttempts = false);
     }
   }
 
@@ -199,7 +186,7 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
       return;
     }
 
-    Navigator.of(context).pop(); // Close dialog
+    Navigator.of(context).pop();
     setState(() {
       _isLoadingStudents = true;
     });
@@ -337,7 +324,6 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
                     ),
                     const SizedBox(height: 24),
 
-                    // Quick stats Row
                     Row(
                       children: [
                         Expanded(
@@ -489,6 +475,325 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
     );
   }
 
+  void _showGradingBottomSheet(int attemptId) async {
+    // Маълумотро ПЕШ аз кушодани sheet бор мекунем
+    final response = await ApiService.get('/api/tests/attempts/$attemptId');
+    if (!mounted) return;
+    if (response.statusCode != 200) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Хатогӣ дар боркунии маълумот'), backgroundColor: Colors.redAccent),
+      );
+      return;
+    }
+
+    final attemptDetail = jsonDecode(response.body);
+    final answers = attemptDetail['answers'] as List;
+
+    final Map<int, int> tempGrades = {};
+    final Map<int, TextEditingController> controllers = {};
+
+    for (var ans in answers) {
+      if (ans['questionType'] == 'Closed') {
+        final answerId = ans['answerId'];
+        tempGrades[answerId] = ans['earnedPoints'] ?? 0;
+        controllers[answerId] = TextEditingController(text: '${tempGrades[answerId]}');
+      }
+    }
+
+    bool isSubmitting = false;
+
+    if (!mounted) return;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF15102A),
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(28),
+          topRight: Radius.circular(28),
+        ),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            void submitGrades() async {
+              bool hasValidationError = false;
+              String errorMessage = '';
+
+              for (var ans in answers) {
+                if (ans['questionType'] == 'Closed') {
+                  final answerId = ans['answerId'];
+                  final int maxPoints = ans['maxPoints'] ?? 10;
+                  final textValue = controllers[answerId]?.text.trim() ?? '';
+
+                  if (textValue.isEmpty) {
+                    hasValidationError = true;
+                    errorMessage = 'Лутфан балли саволро ворид кунед.';
+                    break;
+                  }
+
+                  final points = int.tryParse(textValue);
+                  if (points == null) {
+                    hasValidationError = true;
+                    errorMessage = 'Лутфан танҳо рақам ворид кунед.';
+                    break;
+                  }
+
+                  if (points < 0 || points > maxPoints) {
+                    hasValidationError = true;
+                    errorMessage = 'Балл наметавонад аз $maxPoints зиёд ё аз 0 кам бошад.';
+                    break;
+                  }
+
+                  tempGrades[answerId] = points;
+                }
+              }
+
+              if (hasValidationError) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(errorMessage), backgroundColor: Colors.redAccent),
+                );
+                return;
+              }
+
+              setModalState(() {
+                isSubmitting = true;
+              });
+              
+              final payload = {
+                'grades': tempGrades.entries.map((e) => {
+                  'answerId': e.key,
+                  'earnedPoints': e.value,
+                }).toList(),
+              };
+
+              try {
+                final res = await ApiService.post('/api/tests/attempts/$attemptId/grade', payload);
+                if (res.statusCode == 200) {
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Баҳодиҳӣ бомуваффақият захира шуд.'), backgroundColor: Colors.teal),
+                  );
+                  Navigator.of(ctx).pop();
+                  _fetchPendingAttempts();
+                  _fetchStudents();
+                } else {
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Хатогӣ ҳангоми захираи баҳо')),
+                  );
+                }
+              } catch (e) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Хатогӣ дар пайвастшавӣ ба сервер')),
+                );
+              } finally {
+                setModalState(() {
+                  isSubmitting = false;
+                });
+              }
+            }
+
+            return Padding(
+              padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+              child: DraggableScrollableSheet(
+                initialChildSize: 0.75,
+                maxChildSize: 0.9,
+                minChildSize: 0.5,
+                expand: false,
+                builder: (_, scrollController) {
+                  return ListView(
+                    controller: scrollController,
+                    padding: const EdgeInsets.all(24),
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Text(
+                        'Тафтиш: ${attemptDetail['studentName']}',
+                        style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        'Тест: ${attemptDetail['testTitle']}',
+                        style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 14),
+                      ),
+                      const SizedBox(height: 20),
+
+                      ...answers.map((ans) {
+                        final bool isClosed = ans['questionType'] == 'Closed';
+                        final int maxPoints = ans['maxPoints'] ?? 10;
+                        final int answerId = ans['answerId'];
+
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(isClosed ? 0.05 : 0.02),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.white.withOpacity(isClosed ? 0.1 : 0.04)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: isClosed ? Colors.amber.withOpacity(0.1) : Colors.deepPurple.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      ans['questionType'] == 'TrueFalse'
+                                          ? 'Рост/Дурӯғ'
+                                          : (isClosed ? 'Саволи Хаттӣ' : 'Интихобӣ'),
+                                      style: TextStyle(
+                                        color: isClosed ? Colors.amber : Colors.deepPurpleAccent,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  if (!isClosed)
+                                    Text(
+                                      'Балл: ${ans['earnedPoints']} / $maxPoints',
+                                      style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold),
+                                    )
+                                  else
+                                    Row(
+                                      children: [
+                                        const Text('Балл: ', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                                        SizedBox(
+                                          width: 60,
+                                          height: 35,
+                                          child: TextField(
+                                            keyboardType: TextInputType.number,
+                                            textAlign: TextAlign.center,
+                                            style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 14),
+                                            controller: controllers[answerId],
+                                            scrollPadding: const EdgeInsets.all(120),
+                                            decoration: InputDecoration(
+                                              contentPadding: EdgeInsets.zero,
+                                              fillColor: Colors.black26,
+                                              filled: true,
+                                              enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white.withOpacity(0.2)), borderRadius: BorderRadius.circular(8)),
+                                              focusedBorder: OutlineInputBorder(borderSide: const BorderSide(color: Colors.amber, width: 1.5), borderRadius: BorderRadius.circular(8)),
+                                            ),
+                                          ),
+                                        ),
+                                        Text(' / $maxPoints', style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                                      ],
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                ans['questionText'],
+                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                              ),
+                              const SizedBox(height: 8),
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.black12,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Ҷавоби донишҷӯ:',
+                                      style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11, fontWeight: FontWeight.bold),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    (() {
+                                      final studentAnswer = ans['studentAnswer'] ?? '';
+                                      final isFile = studentAnswer.contains('/uploads/') || 
+                                                     studentAnswer.startsWith('http://') || 
+                                                     studentAnswer.startsWith('https://');
+                                      if (isFile) {
+                                        return Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: Padding(
+                                            padding: const EdgeInsets.only(top: 4.0),
+                                            child: ElevatedButton.icon(
+                                              onPressed: () async {
+                                                final fileUrl = studentAnswer.startsWith('http') 
+                                                    ? studentAnswer 
+                                                    : '${ApiService.baseUrl}$studentAnswer';
+                                                final uri = Uri.parse(fileUrl);
+                                                if (await canLaunchUrl(uri)) {
+                                                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                                } else {
+                                                  if (context.mounted) {
+                                                    ScaffoldMessenger.of(context).showSnackBar(
+                                                      const SnackBar(content: Text('Файлро кушода нашуд')),
+                                                    );
+                                                  }
+                                                }
+                                              },
+                                              icon: const Icon(Icons.open_in_new, size: 16, color: Colors.white),
+                                              label: const Text('Кушодани файл', style: TextStyle(color: Colors.white)),
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: Colors.teal,
+                                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      } else {
+                                        return Text(
+                                          studentAnswer.isNotEmpty ? studentAnswer : 'Ҷавоб дода нашудааст',
+                                          style: TextStyle(
+                                            color: isClosed ? Colors.amberAccent : Colors.white,
+                                            fontSize: 13,
+                                            fontWeight: isClosed ? FontWeight.bold : FontWeight.normal,
+                                          ),
+                                        );
+                                      }
+                                    })(),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+
+                      const SizedBox(height: 24),
+                      if (isSubmitting)
+                        const Center(child: CircularProgressIndicator(color: Colors.deepPurpleAccent))
+                      else
+                        ElevatedButton(
+                          onPressed: submitGrades,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.teal,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          ),
+                          child: const Text('Тасдиқи баҳоҳо ва фиристодан', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        ),
+                    ],
+                  );
+                },
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildStudentsList() {
     if (_isLoadingStudents) {
       return const Center(child: CircularProgressIndicator(color: Colors.deepPurpleAccent));
@@ -626,288 +931,6 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
         backgroundColor: Colors.deepPurpleAccent,
         child: const Icon(Icons.add, color: Colors.white),
       ),
-    );
-  }
-
-  void _showGradingBottomSheet(int attemptId) {
-    final attemptFuture = ApiService.get('/api/tests/attempts/$attemptId');
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF15102A),
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(28),
-          topRight: Radius.circular(28),
-        ),
-      ),
-      builder: (ctx) {
-        Map<int, int> tempGrades = {};
-        Map<int, TextEditingController> controllers = {};
-        bool isSubmitting = false;
-
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return DraggableScrollableSheet(
-              initialChildSize: 0.85,
-              maxChildSize: 0.95,
-              minChildSize: 0.5,
-              expand: false,
-              builder: (_, scrollController) {
-                return FutureBuilder(
-                  future: attemptFuture,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator(color: Colors.deepPurpleAccent));
-                    }
-                    if (snapshot.hasError || snapshot.data?.statusCode != 200) {
-                      return const Center(child: Text('Хатогӣ дар боркунии маълумот', style: TextStyle(color: Colors.white)));
-                    }
-
-                    final attemptDetail = jsonDecode(snapshot.data!.body);
-                    final answers = attemptDetail['answers'] as List;
-
-                    // Initialize grading
-                    answers.forEach((ans) {
-                      if (ans['questionType'] == 'Closed' && !tempGrades.containsKey(ans['answerId'])) {
-                        tempGrades[ans['answerId']] = ans['earnedPoints'] ?? 0;
-                      }
-                    });
-
-                    void submitGrades() async {
-                      setModalState(() {
-                        isSubmitting = true;
-                      });
-                      final payload = {
-                        'grades': tempGrades.entries.map((e) => {
-                          'answerId': e.key,
-                          'earnedPoints': e.value,
-                        }).toList(),
-                      };
-
-                      try {
-                        final res = await ApiService.post('/api/tests/attempts/$attemptId/grade', payload);
-                        if (res.statusCode == 200) {
-                          if (!mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Баҳодиҳӣ бомуваффақият захира шуд.'), backgroundColor: Colors.teal),
-                          );
-                          Navigator.of(ctx).pop();
-                          _fetchPendingAttempts();
-                          _fetchStudents();
-                        } else {
-                          if (!mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Хатогӣ ҳангоми захираи баҳо')),
-                          );
-                        }
-                      } catch (e) {
-                        if (!mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Хатогӣ дар пайвастшавӣ ба сервер')),
-                        );
-                      } finally {
-                        setModalState(() {
-                          isSubmitting = false;
-                        });
-                      }
-                    }
-
-                    return ListView(
-                      controller: scrollController,
-                      padding: const EdgeInsets.all(24),
-                      children: [
-                        Center(
-                          child: Container(
-                            width: 40,
-                            height: 4,
-                            decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        Text(
-                          'Тафтиши кор: ${attemptDetail['studentName']}',
-                          style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
-                        Text(
-                          'Тест: ${attemptDetail['testTitle']}',
-                          style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 14),
-                        ),
-                        const SizedBox(height: 20),
-
-                        ...answers.map((ans) {
-                          final bool isClosed = ans['questionType'] == 'Closed';
-                          final int maxPoints = ans['maxPoints'] ?? 10;
-                          final int answerId = ans['answerId'];
-
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 16),
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(isClosed ? 0.05 : 0.02),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: Colors.white.withOpacity(isClosed ? 0.1 : 0.04)),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: isClosed ? Colors.amber.withOpacity(0.1) : Colors.deepPurple.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Text(
-                                        ans['questionType'] == 'TrueFalse'
-                                            ? 'Рост/Дурӯғ'
-                                            : (isClosed ? 'Саволи Хаттӣ' : 'Интихобӣ'),
-                                        style: TextStyle(
-                                          color: isClosed ? Colors.amber : Colors.deepPurpleAccent,
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                    if (!isClosed)
-                                      Text(
-                                        'Балл: ${ans['earnedPoints']} / $maxPoints',
-                                        style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold),
-                                      )
-                                    else
-                                      Row(
-                                        children: [
-                                          const Text('Балл: ', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                                          SizedBox(
-                                            width: 50,
-                                            height: 30,
-                                            child: TextField(
-                                              keyboardType: TextInputType.number,
-                                              textAlign: TextAlign.center,
-                                              style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 13),
-                                              decoration: InputDecoration(
-                                                contentPadding: EdgeInsets.zero,
-                                                fillColor: Colors.black26,
-                                                filled: true,
-                                                enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white.withOpacity(0.2))),
-                                                focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.amber)),
-                                              ),
-                                              controller: controllers.putIfAbsent(
-                                                answerId,
-                                                () => TextEditingController(text: '${tempGrades[answerId] ?? 0}')
-                                                  ..selection = TextSelection.fromPosition(TextPosition(offset: '${tempGrades[answerId] ?? 0}'.length)),
-                                              ),
-                                              onChanged: (val) {
-                                                final points = int.tryParse(val) ?? 0;
-                                                tempGrades[answerId] = points.clamp(0, maxPoints);
-                                              },
-                                            ),
-                                          ),
-                                          Text(' / $maxPoints', style: const TextStyle(color: Colors.white54, fontSize: 12)),
-                                        ],
-                                      ),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  ans['questionText'],
-                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-                                ),
-                                const SizedBox(height: 8),
-                                Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: Colors.black12,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Ҷавоби донишҷӯ:',
-                                        style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11, fontWeight: FontWeight.bold),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      (() {
-                                        final studentAnswer = ans['studentAnswer'] ?? '';
-                                        final isFile = studentAnswer.contains('/uploads/') || 
-                                                       studentAnswer.startsWith('http://') || 
-                                                       studentAnswer.startsWith('https://');
-                                        if (isFile) {
-                                          return Align(
-                                            alignment: Alignment.centerLeft,
-                                            child: Padding(
-                                              padding: const EdgeInsets.only(top: 4.0),
-                                              child: ElevatedButton.icon(
-                                                onPressed: () async {
-                                                  final fileUrl = studentAnswer.startsWith('http') 
-                                                      ? studentAnswer 
-                                                      : '${ApiService.baseUrl}$studentAnswer';
-                                                  final uri = Uri.parse(fileUrl);
-                                                  if (await canLaunchUrl(uri)) {
-                                                    await launchUrl(uri, mode: LaunchMode.externalApplication);
-                                                  } else {
-                                                    if (context.mounted) {
-                                                      ScaffoldMessenger.of(context).showSnackBar(
-                                                        const SnackBar(content: Text('Файлро кушода нашуд')),
-                                                      );
-                                                    }
-                                                  }
-                                                },
-                                                icon: const Icon(Icons.open_in_new, size: 16, color: Colors.white),
-                                                label: const Text('Кушодани файл', style: TextStyle(color: Colors.white)),
-                                                style: ElevatedButton.styleFrom(
-                                                  backgroundColor: Colors.teal,
-                                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                                ),
-                                              ),
-                                            ),
-                                          );
-                                        } else {
-                                          return Text(
-                                            studentAnswer.isNotEmpty ? studentAnswer : 'Ҷавоб дода нашудааст',
-                                            style: TextStyle(
-                                              color: isClosed ? Colors.amberAccent : Colors.white,
-                                              fontSize: 13,
-                                              fontWeight: isClosed ? FontWeight.bold : FontWeight.normal,
-                                            ),
-                                          );
-                                        }
-                                      })(),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-
-                        const SizedBox(height: 24),
-                        if (isSubmitting)
-                          const Center(child: CircularProgressIndicator(color: Colors.deepPurpleAccent))
-                        else
-                          ElevatedButton(
-                            onPressed: submitGrades,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.teal,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                            ),
-                            child: const Text('Тасдиқи баҳоҳо ва фиристодан', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                          ),
-                      ],
-                    );
-                  },
-                );
-              },
-            );
-          },
-        );
-      },
     );
   }
 
