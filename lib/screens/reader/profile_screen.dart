@@ -2,7 +2,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/theme_provider.dart';
 import '../../services/api_service.dart';
 import '../login_screen.dart';
 
@@ -32,13 +34,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _pickAndUploadAvatar() async {
+    final isDarkMode = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
+    final textColor = isDarkMode ? Colors.white : Colors.black;
+
     try {
       final result = await FilePicker.pickFiles(type: FileType.image);
       if (result == null || result.files.single.path == null) return;
 
       final pickedFile = result.files.single;
 
-      // Enforce 1MB size limit
       if (pickedFile.size > 1 * 1024 * 1024) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -63,9 +67,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (mounted) {
           await Provider.of<AuthProvider>(context, listen: false).updateCurrentUserImageUrl(imageUrl);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Расми профил бомуваффақият боргузорӣ шуд!'),
-              backgroundColor: Colors.green,
+            SnackBar(
+              content: const Text('Расми профил бомуваффақият боргузорӣ шуд!'),
+              backgroundColor: isDarkMode ? Colors.white : Colors.black,
             ),
           );
         }
@@ -105,8 +109,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     final hasImage = user.imageUrl != null && user.imageUrl!.isNotEmpty;
 
+    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
+    final theme = Theme.of(context);
+    final textColor = isDarkMode ? Colors.white : Colors.black;
+    final backgroundColor = isDarkMode ? Colors.black : const Color(0xFFEBF3ED);
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0F0C20),
+      backgroundColor: backgroundColor,
       body: CustomScrollView(
         slivers: [
           // Header
@@ -114,11 +123,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(24, 60, 24, 36),
-              decoration: const BoxDecoration(
-                color: Color(0xFF15102A),
-                borderRadius: BorderRadius.only(
+              decoration: BoxDecoration(
+                color: isDarkMode ? theme.appBarTheme.backgroundColor : Colors.white,
+                borderRadius: const BorderRadius.only(
                   bottomLeft: Radius.circular(36),
                   bottomRight: Radius.circular(36),
+                ),
+                boxShadow: isDarkMode ? [] : [
+                  BoxShadow(
+                    color: const Color(0xFF228B22).withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+                border: Border(
+                  bottom: BorderSide(
+                    color: isDarkMode ? Colors.white10 : const Color(0xFF1E7431).withOpacity(0.15),
+                  ),
                 ),
               ),
               child: Column(
@@ -131,35 +152,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         height: 90,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          gradient: hasImage ? null : const LinearGradient(
-                            colors: [Color(0xFF7C3AED), Color(0xFF4F46E5)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
+                          color: textColor.withOpacity(0.1),
+                          border: Border.all(
+                            color: isDarkMode ? Colors.white24 : const Color(0xFF1E7431).withOpacity(0.25),
+                            width: 3,
                           ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.deepPurpleAccent.withOpacity(0.4),
-                              blurRadius: 20,
-                              spreadRadius: 2,
-                            ),
-                          ],
                         ),
                         child: _isUploading
-                            ? const Center(
+                            ? Center(
                                 child: CircularProgressIndicator(
-                                  color: Colors.white,
+                                  color: textColor,
                                 ),
                               )
                             : ClipOval(
                                 child: hasImage
-                                    ? Image.network(
-                                        _getFullImageUrl(user.imageUrl),
+                                    ? CachedNetworkImage(
+                                        imageUrl: _getFullImageUrl(user.imageUrl),
                                         fit: BoxFit.cover,
-                                        errorBuilder: (context, error, stackTrace) => Center(
+                                        placeholder: (context, url) => Center(
+                                          child: CircularProgressIndicator(color: textColor, strokeWidth: 2),
+                                        ),
+                                        errorWidget: (context, url, error) => Center(
                                           child: Text(
                                             _getInitials(user.name),
-                                            style: const TextStyle(
-                                              color: Colors.white,
+                                            style: TextStyle(
+                                              color: textColor,
                                               fontSize: 32,
                                               fontWeight: FontWeight.bold,
                                             ),
@@ -169,8 +186,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     : Center(
                                         child: Text(
                                           _getInitials(user.name),
-                                          style: const TextStyle(
-                                            color: Colors.white,
+                                          style: TextStyle(
+                                            color: textColor,
                                             fontSize: 32,
                                             fontWeight: FontWeight.bold,
                                           ),
@@ -184,14 +201,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         child: GestureDetector(
                           onTap: _isUploading ? null : _pickAndUploadAvatar,
                           child: Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF7C3AED),
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: textColor,
                               shape: BoxShape.circle,
+                              border: Border.all(color: isDarkMode ? Colors.black : Colors.white, width: 2),
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.camera_alt,
-                              color: Colors.white,
+                              color: isDarkMode ? Colors.black : Colors.white,
                               size: 16,
                             ),
                           ),
@@ -202,8 +220,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 16),
                   Text(
                     user.name,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: textColor,
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
                     ),
@@ -212,13 +230,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
                     decoration: BoxDecoration(
-                      color: Colors.deepPurpleAccent.withOpacity(0.2),
+                      color: textColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: textColor.withOpacity(0.2)),
                     ),
                     child: Text(
                       _roleLabel(user.role),
-                      style: const TextStyle(
-                        color: Colors.deepPurpleAccent,
+                      style: TextStyle(
+                        color: textColor,
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
                       ),
@@ -229,48 +248,55 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
 
-          // Info Cards
           SliverPadding(
             padding: const EdgeInsets.all(20),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
                 const SizedBox(height: 8),
-                _buildSectionTitle('Маълумоти шахсӣ'),
+                _buildSectionTitle('Маълумоти шахсӣ', textColor),
                 const SizedBox(height: 12),
-                _buildInfoCard(Icons.email_outlined, 'Email', user.email),
+                _buildInfoCard(Icons.email_outlined, 'Email', user.email, textColor),
                 if (user.phone != null && user.phone!.isNotEmpty)
-                  _buildInfoCard(Icons.phone_outlined, 'Телефон', user.phone!),
-                _buildInfoCard(Icons.badge_outlined, 'Нақш', _roleLabel(user.role)),
-
-              
-                const SizedBox(height: 12),
-
-                // Logout
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: OutlinedButton.icon(
-                    onPressed: () async {
-                      await Provider.of<AuthProvider>(context, listen: false).logout();
-                      if (!context.mounted) return;
-                      Navigator.of(context).pushAndRemoveUntil(
-                        MaterialPageRoute(builder: (_) => const LoginScreen()),
-                        (route) => false,
-                      );
-                    },
-                    icon: const Icon(Icons.logout, color: Colors.redAccent),
-                    label: const Text('Хуруҷ', style: TextStyle(color: Colors.redAccent, fontSize: 16)),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Colors.redAccent),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    ),
-                  ),
-                ),
+                  _buildInfoCard(Icons.phone_outlined, 'Телефон', user.phone!, textColor),
+                _buildInfoCard(Icons.badge_outlined, 'Нақш', _roleLabel(user.role), textColor),
                 const SizedBox(height: 24),
               ]),
             ),
           ),
         ],
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+          child: SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: TextButton.icon(
+              onPressed: () async {
+                await Provider.of<AuthProvider>(context, listen: false).logout();
+                if (!context.mounted) return;
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  (route) => false,
+                );
+              },
+              icon: const Icon(Icons.logout, color: Color(0xFFD32F2F)),
+              label: const Text(
+                'Хуруҷ',
+                style: TextStyle(
+                  color: Color(0xFFD32F2F),
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              style: TextButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(100),
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -288,11 +314,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Widget _buildSectionTitle(String title) {
+  Widget _buildSectionTitle(String title, Color textColor) {
     return Text(
       title,
       style: TextStyle(
-        color: Colors.white.withOpacity(0.5),
+        color: textColor.withOpacity(0.5),
         fontSize: 12,
         fontWeight: FontWeight.bold,
         letterSpacing: 1.2,
@@ -300,79 +326,65 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildInfoCard(IconData icon, String label, String value) {
+  Widget _buildInfoCard(IconData icon, String label, String value, Color textColor) {
+    final isDarkMode = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.03),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.06)),
+        color: isDarkMode ? Colors.white.withOpacity(0.03) : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDarkMode ? textColor.withOpacity(0.1) : const Color(0xFF1E7431).withOpacity(0.15),
+        ),
+        boxShadow: isDarkMode ? [] : [
+          BoxShadow(
+            color: const Color(0xFF228B22).withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.deepPurpleAccent.withOpacity(0.1),
+              color: isDarkMode ? Colors.white.withOpacity(0.1) : const Color(0xFFEBF3ED),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: Colors.deepPurpleAccent, size: 20),
+            child: Icon(
+              icon,
+              color: isDarkMode ? textColor : const Color(0xFF1E7431),
+              size: 20,
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11)),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: isDarkMode ? textColor.withOpacity(0.4) : const Color(0xFF657367),
+                    fontSize: 11,
+                  ),
+                ),
                 const SizedBox(height: 3),
                 Text(
                   value,
-                  style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    color: isDarkMode ? textColor : const Color(0xFF1A1F1C),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildActionTile(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.03),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withOpacity(0.06)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, color: color, size: 20),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
-            ),
-            Icon(Icons.arrow_forward_ios, color: Colors.white.withOpacity(0.3), size: 14),
-          ],
-        ),
       ),
     );
   }

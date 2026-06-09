@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 import '../../models/book.dart';
 import '../../services/api_service.dart';
 
@@ -54,6 +56,20 @@ class _EbookReaderScreenState extends State<EbookReaderScreen> {
     });
 
     try {
+      final appDir = await getApplicationDocumentsDirectory();
+      final file = File('${appDir.path}/secure_ebook_${widget.book.id}.txt');
+
+      if (await file.exists() && await file.length() > 0) {
+        final content = await file.readAsString();
+        if (mounted) {
+          setState(() {
+            _content = content;
+            _isLoading = false;
+          });
+        }
+        return;
+      }
+
       // 1. Request access ticket from backend
       final ticketResponse = await ApiService.post(
         '/api/books/${widget.book.id}/request-ticket',
@@ -71,10 +87,16 @@ class _EbookReaderScreenState extends State<EbookReaderScreen> {
 
         if (contentResponse.statusCode == 200) {
           final contentData = jsonDecode(contentResponse.body);
-          setState(() {
-            _content = contentData['content'];
-            _isLoading = false;
-          });
+          final contentText = contentData['content'];
+          
+          await file.writeAsString(contentText);
+
+          if (mounted) {
+            setState(() {
+              _content = contentText;
+              _isLoading = false;
+            });
+          }
           return;
         }
       }
@@ -108,16 +130,18 @@ class _EbookReaderScreenState extends State<EbookReaderScreen> {
     final textColor = _isDarkMode ? Colors.white.withOpacity(0.9) : const Color(0xFF1C1917);
     final appBarColor = _isDarkMode ? const Color(0xFF15102A) : const Color(0xFFE2E2D5);
 
-    final Widget bodyContent;
-
     if (_isLoading) {
-      bodyContent = const Center(
-        child: Padding(
-          padding: EdgeInsets.symmetric(vertical: 100.0),
+      return Scaffold(
+        backgroundColor: bgColor,
+        body: const Center(
           child: CircularProgressIndicator(color: Colors.deepPurpleAccent),
         ),
       );
-    } else if (_error != null) {
+    }
+
+    final Widget bodyContent;
+
+    if (_error != null) {
       bodyContent = Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 60.0),

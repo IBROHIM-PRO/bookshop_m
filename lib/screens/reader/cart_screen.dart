@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/book.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
@@ -58,7 +59,10 @@ class _CartScreenState extends State<CartScreen> {
 
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Лутфан аввал ворид шавед'), backgroundColor: Colors.redAccent),
+        SnackBar(
+          content: const Text('Лутфан аввал ворид шавед'),
+          backgroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+        ),
       );
       return;
     }
@@ -90,7 +94,7 @@ class _CartScreenState extends State<CartScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(err['message'] ?? 'Хатогӣ дар фиристодани заявка'),
-            backgroundColor: Colors.redAccent,
+            backgroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
           ),
         );
       }
@@ -98,39 +102,43 @@ class _CartScreenState extends State<CartScreen> {
       if (!mounted) return;
       setState(() => _isSubmitting = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Хатогӣ дар пайвастшавӣ ба сервер'), backgroundColor: Colors.redAccent),
+        SnackBar(
+          content: const Text('Хатогӣ дар пайвастшавӣ ба сервер'),
+          backgroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+        ),
       );
     }
   }
 
   void _showSuccessDialog() {
     final theme = Theme.of(context);
-    final primaryColor = theme.colorScheme.primary;
-    final isBw = Provider.of<ThemeProvider>(context, listen: false).isBlackAndWhite;
+    final isDarkMode = theme.brightness == Brightness.dark;
+    final textColor = isDarkMode ? Colors.white : Colors.black;
+    final backgroundColor = isDarkMode ? Colors.black : Colors.white;
 
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        backgroundColor: isBw ? Colors.black : const Color(0xFF1E173E),
+        backgroundColor: backgroundColor,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(24),
-          side: isBw ? const BorderSide(color: Colors.white24) : BorderSide.none,
+          side: BorderSide(color: isDarkMode ? Colors.white10 : Colors.black12),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.check_circle, color: isBw ? Colors.white : Colors.teal, size: 72),
+            Icon(Icons.check_circle_outline, color: textColor, size: 72),
             const SizedBox(height: 16),
             Text(
               'Заявка фиристода шуд!',
-              style: TextStyle(color: isBw ? Colors.white : Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+              style: TextStyle(color: textColor, fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             Text(
               'Заявкаи шумо қабул шуд. Админ онро тафтиш карда тасдиқ хоҳад кард.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white.withOpacity(0.7), height: 1.5),
+              style: TextStyle(color: textColor.withOpacity(0.7), height: 1.5),
             ),
           ],
         ),
@@ -139,19 +147,11 @@ class _CartScreenState extends State<CartScreen> {
             child: ElevatedButton(
               onPressed: () {
                 Navigator.of(ctx).pop();
-                Navigator.of(context).pop(true); // Return true = order placed
+                Navigator.of(context).pop(true);
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: primaryColor,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-              ),
-              child: Text(
+              child: const Text(
                 'Фаҳмо',
-                style: TextStyle(
-                  color: isBw ? Colors.black : Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
           ),
@@ -164,19 +164,21 @@ class _CartScreenState extends State<CartScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+    final textColor = isDarkMode ? Colors.white : Colors.black;
+    final backgroundColor = theme.scaffoldBackgroundColor;
     final primaryColor = theme.colorScheme.primary;
-    final isBw = Provider.of<ThemeProvider>(context).isBlackAndWhite;
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: backgroundColor,
       appBar: AppBar(
         backgroundColor: theme.appBarTheme.backgroundColor,
         elevation: 0,
         title: Text(
           _subTab == 0 ? 'Сабади харид (${_items.length})' : 'Заявкаҳои ман',
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
         ),
-        iconTheme: const IconThemeData(color: Colors.white),
+        iconTheme: IconThemeData(color: textColor),
       ),
       body: Column(
         children: [
@@ -187,9 +189,18 @@ class _CartScreenState extends State<CartScreen> {
               height: 48,
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.04),
+                color: isDarkMode ? Colors.white.withOpacity(0.05) : Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white.withOpacity(0.06)),
+                border: Border.all(
+                  color: isDarkMode ? Colors.white10 : const Color(0xFF1E7431).withOpacity(0.15),
+                ),
+                boxShadow: isDarkMode ? [] : [
+                  BoxShadow(
+                    color: const Color(0xFF228B22).withOpacity(0.03),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
               ),
               child: Row(
                 children: [
@@ -198,7 +209,9 @@ class _CartScreenState extends State<CartScreen> {
                       onTap: () => setState(() => _subTab = 0),
                       child: Container(
                         decoration: BoxDecoration(
-                          color: _subTab == 0 ? primaryColor : Colors.transparent,
+                          color: _subTab == 0
+                              ? (isDarkMode ? primaryColor : const Color(0xFF1E7431))
+                              : Colors.transparent,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         alignment: Alignment.center,
@@ -206,8 +219,8 @@ class _CartScreenState extends State<CartScreen> {
                           'Сабад',
                           style: TextStyle(
                             color: _subTab == 0
-                                ? (isBw ? Colors.black : Colors.white)
-                                : Colors.white60,
+                                ? Colors.white
+                                : (isDarkMode ? Colors.white60 : const Color(0xFF657367)),
                             fontWeight: FontWeight.bold,
                             fontSize: 14,
                           ),
@@ -220,7 +233,9 @@ class _CartScreenState extends State<CartScreen> {
                       onTap: () => setState(() => _subTab = 1),
                       child: Container(
                         decoration: BoxDecoration(
-                          color: _subTab == 1 ? primaryColor : Colors.transparent,
+                          color: _subTab == 1
+                              ? (isDarkMode ? primaryColor : const Color(0xFF1E7431))
+                              : Colors.transparent,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         alignment: Alignment.center,
@@ -228,8 +243,8 @@ class _CartScreenState extends State<CartScreen> {
                           'Заявкаҳо',
                           style: TextStyle(
                             color: _subTab == 1
-                                ? (isBw ? Colors.black : Colors.white)
-                                : Colors.white60,
+                                ? Colors.white
+                                : (isDarkMode ? Colors.white60 : const Color(0xFF657367)),
                             fontWeight: FontWeight.bold,
                             fontSize: 14,
                           ),
@@ -249,11 +264,11 @@ class _CartScreenState extends State<CartScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.shopping_cart_outlined, size: 80, color: Colors.white.withOpacity(0.2)),
+                            Icon(Icons.shopping_cart_outlined, size: 80, color: textColor.withOpacity(0.2)),
                             const SizedBox(height: 20),
                             Text(
                               'Сабади харид холӣ аст',
-                              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16),
+                              style: TextStyle(color: textColor.withOpacity(0.5), fontSize: 16),
                             ),
                           ],
                         ),
@@ -270,9 +285,18 @@ class _CartScreenState extends State<CartScreen> {
                                   margin: const EdgeInsets.only(bottom: 12),
                                   padding: const EdgeInsets.all(14),
                                   decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.03),
+                                    color: isDarkMode ? Colors.white.withOpacity(0.03) : Colors.white,
                                     borderRadius: BorderRadius.circular(18),
-                                    border: Border.all(color: Colors.white.withOpacity(0.06)),
+                                    border: Border.all(
+                                      color: isDarkMode ? Colors.white10 : const Color(0xFF1E7431).withOpacity(0.15),
+                                    ),
+                                    boxShadow: isDarkMode ? [] : [
+                                      BoxShadow(
+                                        color: const Color(0xFF228B22).withOpacity(0.04),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 3),
+                                      ),
+                                    ],
                                   ),
                                   child: Row(
                                     children: [
@@ -282,13 +306,16 @@ class _CartScreenState extends State<CartScreen> {
                                         child: Container(
                                           width: 60,
                                           height: 80,
-                                          color: Colors.white.withOpacity(0.05),
+                                          color: textColor.withOpacity(0.05),
                                           child: item.book.imageUrl != null &&
                                                   item.book.imageUrl!.startsWith('http')
-                                              ? Image.network(item.book.imageUrl!, fit: BoxFit.cover,
-                                                  errorBuilder: (_, __, ___) =>
-                                                      const Icon(Icons.book, color: Colors.white30))
-                                              : const Icon(Icons.book, color: Colors.white30, size: 30),
+                                              ? CachedNetworkImage(
+                                                  imageUrl: item.book.imageUrl!, 
+                                                  fit: BoxFit.cover,
+                                                  placeholder: (context, url) => Icon(Icons.book, color: textColor.withOpacity(0.3)),
+                                                  errorWidget: (context, url, error) => Icon(Icons.book, color: textColor.withOpacity(0.3)),
+                                                )
+                                              : Icon(Icons.book, color: textColor.withOpacity(0.3), size: 30),
                                         ),
                                       ),
                                       const SizedBox(width: 14),
@@ -300,14 +327,14 @@ class _CartScreenState extends State<CartScreen> {
                                               item.book.title,
                                               maxLines: 2,
                                               overflow: TextOverflow.ellipsis,
-                                              style: const TextStyle(
-                                                  color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                                              style: TextStyle(
+                                                  color: textColor, fontWeight: FontWeight.bold, fontSize: 14),
                                             ),
                                             const SizedBox(height: 4),
                                             Text(
                                               '${item.book.price.toStringAsFixed(0)} TJS',
                                               style: TextStyle(
-                                                color: isBw ? Colors.white70 : Colors.deepPurpleAccent,
+                                                color: textColor,
                                                 fontWeight: FontWeight.bold,
                                               ),
                                             ),
@@ -319,22 +346,22 @@ class _CartScreenState extends State<CartScreen> {
                                           // Quantity controls
                                           Row(
                                             children: [
-                                              _qtyButton(Icons.remove, () => _decrement(item)),
+                                              _qtyButton(Icons.remove, () => _decrement(item), isDarkMode),
                                               Padding(
                                                 padding: const EdgeInsets.symmetric(horizontal: 12),
                                                 child: Text(
                                                   '${item.quantity}',
-                                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                                                  style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 16),
                                                 ),
                                               ),
-                                              _qtyButton(Icons.add, () => _increment(item)),
+                                              _qtyButton(Icons.add, () => _increment(item), isDarkMode),
                                             ],
                                           ),
                                           const SizedBox(height: 8),
                                           GestureDetector(
                                             onTap: () => _remove(item),
-                                            child: const Text('Нест кардан',
-                                                style: TextStyle(color: Colors.redAccent, fontSize: 11)),
+                                            child: Text('Нест кардан',
+                                                style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black54, fontSize: 11, decoration: TextDecoration.underline)),
                                           ),
                                         ],
                                       ),
@@ -354,7 +381,7 @@ class _CartScreenState extends State<CartScreen> {
                                 topLeft: Radius.circular(24),
                                 topRight: Radius.circular(24),
                               ),
-                              border: isBw ? Border.all(color: Colors.white10) : null,
+                              border: Border.all(color: isDarkMode ? Colors.white10 : Colors.black12),
                             ),
                             child: Column(
                               children: [
@@ -362,11 +389,10 @@ class _CartScreenState extends State<CartScreen> {
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text('Ҷамъ (${_items.length} китоб):',
-                                        style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 15)),
+                                        style: TextStyle(color: textColor.withOpacity(0.7), fontSize: 15)),
                                     Text(
                                       '${_totalPrice.toStringAsFixed(0)} TJS',
-                                      style: const TextStyle(
-                                          color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20),
+                                      style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 20),
                                     ),
                                   ],
                                 ),
@@ -376,24 +402,18 @@ class _CartScreenState extends State<CartScreen> {
                                   height: 52,
                                   child: ElevatedButton(
                                     onPressed: _isSubmitting ? null : _placeOrder,
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: primaryColor,
-                                      disabledBackgroundColor: primaryColor.withOpacity(0.3),
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                    ),
                                     child: _isSubmitting
                                         ? SizedBox(
                                             height: 22,
                                             width: 22,
                                             child: CircularProgressIndicator(
-                                              color: isBw ? Colors.black : Colors.white,
+                                              color: isDarkMode ? Colors.black : Colors.white,
                                               strokeWidth: 2,
                                             ),
                                           )
-                                        : Text(
+                                        : const Text(
                                             '🛒  Фармоиш додан',
                                             style: TextStyle(
-                                              color: isBw ? Colors.black : Colors.white,
                                               fontWeight: FontWeight.bold,
                                               fontSize: 16,
                                             ),
@@ -411,17 +431,24 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  Widget _qtyButton(IconData icon, VoidCallback onTap) {
+  Widget _qtyButton(IconData icon, VoidCallback onTap, bool isDarkMode) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: 30,
         height: 30,
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.08),
+          color: isDarkMode ? Colors.white.withOpacity(0.08) : const Color(0xFFEBF3ED),
           borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isDarkMode ? Colors.white10 : const Color(0xFF1E7431).withOpacity(0.15),
+          ),
         ),
-        child: Icon(icon, color: Colors.white70, size: 16),
+        child: Icon(
+          icon,
+          color: isDarkMode ? Colors.white : const Color(0xFF1E7431),
+          size: 16,
+        ),
       ),
     );
   }

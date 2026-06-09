@@ -54,7 +54,7 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
   void _showAttemptDetails(int attemptId) async {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF15102A),
+      backgroundColor: const Color(0xFF162218),
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.only(
@@ -73,7 +73,7 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
               future: ApiService.get('/api/tests/attempts/$attemptId'),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator(color: Colors.deepPurpleAccent));
+                  return const Center(child: CircularProgressIndicator(color: Color(0xFF1E7431)));
                 }
                 if (snapshot.hasError || snapshot.data?.statusCode != 200) {
                   return const Center(child: Text('Хатогӣ дар боркунии маълумот', style: TextStyle(color: Colors.white)));
@@ -101,9 +101,9 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
                     const SizedBox(height: 4),
                     Text(
                       'Нишондиҳанда: ${detail['earnedPoints']} / ${detail['totalPoints']} балл',
-                      style: const TextStyle(color: Colors.deepPurpleAccent, fontWeight: FontWeight.bold),
+                      style: const TextStyle(color: Color(0xFFA3E635), fontWeight: FontWeight.bold),
                     ),
-                    const Divider(color: Colors.white12, height: 32),
+                    const Divider(color: Color(0xFF2E3D32), height: 32),
 
                     ...answers.map((ans) {
                       final bool isClosed = ans['questionType'] == 'Closed';
@@ -115,9 +115,9 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
                         margin: const EdgeInsets.only(bottom: 16),
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.02),
+                          color: const Color(0xFF162218),
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.white.withOpacity(0.04)),
+                          border: Border.all(color: const Color(0xFF2E3D32)),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -129,7 +129,7 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
                                   ans['questionType'] == 'TrueFalse'
                                       ? 'Рост/Дурӯғ'
                                       : (isClosed ? 'Саволи хаттӣ' : 'Саволи интихобӣ'),
-                                  style: TextStyle(color: isClosed ? Colors.amber : Colors.deepPurpleAccent, fontSize: 11, fontWeight: FontWeight.bold),
+                                  style: TextStyle(color: isClosed ? Colors.amber : const Color(0xFFA3E635), fontSize: 11, fontWeight: FontWeight.bold),
                                 ),
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -205,12 +205,12 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: const Color(0xFF0F0C20),
+        backgroundColor: const Color(0xFF0D120E),
         appBar: AppBar(
           title: Text(widget.studentName),
-          backgroundColor: const Color(0xFF15102A),
+          backgroundColor: const Color(0xFF162218),
         ),
-        body: const Center(child: CircularProgressIndicator(color: Colors.deepPurpleAccent)),
+        body: const Center(child: CircularProgressIndicator(color: Color(0xFF1E7431))),
       );
     }
 
@@ -219,10 +219,10 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
     final booksCount = _stats?['booksReadCount'] ?? 0;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F0C20),
+      backgroundColor: const Color(0xFF0D120E),
       appBar: AppBar(
         title: Text(widget.studentName, style: const TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: const Color(0xFF15102A),
+        backgroundColor: const Color(0xFF162218),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -231,13 +231,9 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF2E1C7E), Color(0xFF15102A)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+              color: const Color(0xFF162218),
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Colors.white.withOpacity(0.05)),
+              border: Border.all(color: const Color(0xFF2E3D32)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -338,9 +334,9 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
               return Container(
                 margin: const EdgeInsets.only(bottom: 12),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.02),
+                  color: const Color(0xFF162218),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.white.withOpacity(0.04)),
+                  border: Border.all(color: const Color(0xFF2E3D32)),
                 ),
                 child: ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -361,7 +357,7 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
                       else
                         Text(
                           'Холҳои вариантӣ: ${a['optionEarnedPoints'] ?? a['earnedPoints']} аз ${a['optionTotalPoints'] ?? a['totalPoints']}',
-                          style: TextStyle(color: Colors.teal.withOpacity(0.8), fontSize: 12, fontWeight: FontWeight.bold),
+                          style: TextStyle(color: const Color(0xFFA3E635), fontSize: 12, fontWeight: FontWeight.bold),
                         ),
                       if (!isGraded)
                         const Padding(
@@ -385,7 +381,7 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
                       isGraded ? '${percent.toStringAsFixed(0)}%' : 'Тафтиш',
                       style: TextStyle(
                         color: isGraded 
-                            ? (isPassed ? Colors.tealAccent : Colors.redAccent)
+                            ? (isPassed ? const Color(0xFFA3E635) : Colors.redAccent)
                             : Colors.amber,
                         fontWeight: FontWeight.bold,
                         fontSize: 13,
@@ -404,7 +400,7 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.04),
+        color: Colors.white.withOpacity(0.02),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../services/api_service.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/theme_provider.dart';
 import '../login_screen.dart';
 import '../notifications_feed.dart';
 import 'create_test_screen.dart';
@@ -43,6 +44,13 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
     super.dispose();
   }
 
+  String _cleanTitle(String title) {
+    final t = title.trim();
+    if (t.toLowerCase() == 'уқуқ') return 'Ҳуқуқи инсон';
+    if (t.toLowerCase() == 'вчаҷв') return 'Таърихи халқи тоҷик';
+    return title;
+  }
+
   String _getFullImageUrl(String? url) {
     if (url == null || url.isEmpty) return '';
     if (url.startsWith('http')) return url;
@@ -59,6 +67,10 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
   }
 
   Future<void> _pickAndUploadStudentAvatar(int studentId) async {
+    final isDarkMode = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
+    final snackBarBg = isDarkMode ? Colors.white : Colors.black;
+    final snackBarFg = isDarkMode ? Colors.black : Colors.white;
+
     try {
       final result = await FilePicker.pickFiles(type: FileType.image);
       if (result == null || result.files.single.path == null) return;
@@ -68,8 +80,8 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
       if (pickedFile.size > 1 * 1024 * 1024) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Ҳаҷми расм набояд аз 1 МБ зиёд бошад!'),
+            SnackBar(
+              content: const Text('Ҳаҷми расм набояд аз 1 МБ зиёд бошад!'),
               backgroundColor: Colors.redAccent,
             ),
           );
@@ -79,9 +91,10 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Расм боргузорӣ шуда истодааст...'),
-            duration: Duration(seconds: 1),
+          SnackBar(
+            content: const Text('Расм боргузорӣ шуда истодааст...'),
+            backgroundColor: snackBarBg,
+            duration: const Duration(seconds: 1),
           ),
         );
       }
@@ -201,7 +214,7 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
         _fetchStudents();
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Донишҷӯ бомуваффақият пайваст карда шуд.'), backgroundColor: Colors.teal),
+          const SnackBar(content: Text('Донишҷӯ бомуваффақият пайваст карда шуд.'), backgroundColor: Colors.black),
         );
       } else {
         final err = jsonDecode(response.body);
@@ -225,36 +238,43 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
   }
 
   void _showLinkStudentDialog() {
+    final isDarkMode = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
+    final textColor = isDarkMode ? Colors.white : Colors.black;
+    final backgroundColor = isDarkMode ? Colors.black : Colors.white;
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E173E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Пайваст кардани донишҷӯ', style: TextStyle(color: Colors.white)),
+        backgroundColor: backgroundColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: textColor.withOpacity(0.1)),
+        ),
+        title: Text('Пайваст кардани донишҷӯ', style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
+            Text(
               'Почтаи электронии (email) донишҷӯро, ки ҳамчун Хонанда ба қайд гирифта шудааст, ворид кунед:',
-              style: TextStyle(color: Colors.white70, fontSize: 14),
+              style: TextStyle(color: textColor.withOpacity(0.7), fontSize: 14),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: _emailController,
               keyboardType: TextInputType.emailAddress,
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: textColor),
               decoration: InputDecoration(
                 hintText: 'Email-и хонанда',
-                hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
+                hintStyle: TextStyle(color: textColor.withOpacity(0.4)),
                 filled: true,
-                fillColor: Colors.white.withOpacity(0.05),
+                fillColor: textColor.withOpacity(0.05),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                  borderSide: BorderSide(color: textColor.withOpacity(0.1)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.deepPurpleAccent, width: 2),
+                  borderSide: BorderSide(color: textColor, width: 2),
                 ),
               ),
             ),
@@ -263,12 +283,11 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Бекор кардан', style: TextStyle(color: Colors.white54)),
+            child: Text('Бекор кардан', style: TextStyle(color: textColor.withOpacity(0.6))),
           ),
           ElevatedButton(
             onPressed: _linkStudent,
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.deepPurpleAccent),
-            child: const Text('Пайваст кардан', style: TextStyle(color: Colors.white)),
+            child: const Text('Пайваст кардан'),
           ),
         ],
       ),
@@ -276,9 +295,13 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
   }
 
   void _showStudentStats(int studentId, String studentName) async {
+    final isDarkMode = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
+    final textColor = isDarkMode ? Colors.white : Colors.black;
+    final backgroundColor = isDarkMode ? Colors.black : Colors.white;
+
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF15102A),
+      backgroundColor: backgroundColor,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.only(
@@ -297,10 +320,10 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
               future: ApiService.get('/api/teacher/student/$studentId/statistics'),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator(color: Colors.deepPurpleAccent));
+                  return Center(child: CircularProgressIndicator(color: textColor));
                 }
                 if (snapshot.hasError || snapshot.data?.statusCode != 200) {
-                  return const Center(child: Text('Хатогӣ дар боркунии омор', style: TextStyle(color: Colors.white)));
+                  return Center(child: Text('Хатогӣ дар боркунии омор', style: TextStyle(color: textColor)));
                 }
 
                 final stats = jsonDecode(snapshot.data!.body);
@@ -314,13 +337,13 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
                       child: Container(
                         width: 40,
                         height: 4,
-                        decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+                        decoration: BoxDecoration(color: textColor.withOpacity(0.2), borderRadius: BorderRadius.circular(2)),
                       ),
                     ),
                     const SizedBox(height: 24),
                     Text(
                       'Омори пешрафти $studentName',
-                      style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: textColor, fontSize: 22, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 24),
 
@@ -331,7 +354,7 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
                             'Китобҳои дастрас',
                             '${stats['booksReadCount']}',
                             Icons.menu_book,
-                            Colors.teal,
+                            textColor,
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -340,16 +363,16 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
                             'Холҳои миёна',
                             '${stats['averageScorePercentage']}%',
                             Icons.analytics,
-                            Colors.deepPurpleAccent,
+                            textColor,
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 24),
 
-                    const Text(
+                    Text(
                       'Таърихи супоридани тестҳо',
-                      style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 12),
 
@@ -359,7 +382,7 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
                         child: Center(
                           child: Text(
                             'То ҳол тестҳо супорида нашудаанд',
-                            style: TextStyle(color: Colors.white.withOpacity(0.5)),
+                            style: TextStyle(color: textColor.withOpacity(0.5)),
                           ),
                         ),
                       )
@@ -372,9 +395,9 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
                           margin: const EdgeInsets.only(bottom: 12),
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.03),
+                            color: textColor.withOpacity(0.03),
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: Colors.white.withOpacity(0.05)),
+                            border: Border.all(color: textColor.withOpacity(0.1)),
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -385,18 +408,18 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
                                   children: [
                                     Text(
                                       a['testTitle'],
-                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                      style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
                                     ),
                                     const SizedBox(height: 4),
                                     if (isGraded)
                                       Text(
                                         'Хол: ${a['score']}/${a['totalQuestions']}',
-                                        style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13),
+                                        style: TextStyle(color: textColor.withOpacity(0.6), fontSize: 13),
                                       )
                                     else
                                       Text(
                                         'Холҳои вариантӣ: ${a['optionEarnedPoints'] ?? a['earnedPoints']} аз ${a['optionTotalPoints'] ?? a['totalPoints']}',
-                                        style: TextStyle(color: Colors.teal.withOpacity(0.8), fontSize: 12, fontWeight: FontWeight.bold),
+                                        style: TextStyle(color: textColor.withOpacity(0.6), fontSize: 12, fontWeight: FontWeight.bold),
                                       ),
                                     if (!isGraded)
                                       const Padding(
@@ -413,7 +436,7 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
                                 Text(
                                   '${percent.toStringAsFixed(0)}%',
                                   style: TextStyle(
-                                    color: isPassed ? Colors.teal : Colors.redAccent,
+                                    color: isPassed ? Colors.green : Colors.redAccent,
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -422,7 +445,7 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: Colors.amber.withOpacity(0.15),
+                                    color: textColor.withOpacity(0.1),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: const Text(
@@ -452,9 +475,9 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.03),
+        color: color.withOpacity(0.03),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        border: Border.all(color: color.withOpacity(0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -463,12 +486,12 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
           const SizedBox(height: 16),
           Text(
             value,
-            style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+            style: TextStyle(color: color, fontSize: 24, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 4),
           Text(
             label,
-            style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+            style: TextStyle(color: color.withOpacity(0.5), fontSize: 12),
           ),
         ],
       ),
@@ -476,7 +499,6 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
   }
 
   void _showGradingBottomSheet(int attemptId) async {
-    // Маълумотро ПЕШ аз кушодани sheet бор мекунем
     final response = await ApiService.get('/api/tests/attempts/$attemptId');
     if (!mounted) return;
     if (response.statusCode != 200) {
@@ -500,13 +522,13 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
       }
     }
 
-    bool isSubmitting = false;
-
-    if (!mounted) return;
+    final isDarkMode = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
+    final textColor = isDarkMode ? Colors.white : Colors.black;
+    final backgroundColor = isDarkMode ? Colors.black : Colors.white;
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF15102A),
+      backgroundColor: backgroundColor,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.only(
@@ -558,7 +580,6 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
               }
 
               setModalState(() {
-                isSubmitting = true;
               });
               
               final payload = {
@@ -573,7 +594,7 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
                 if (res.statusCode == 200) {
                   if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Баҳодиҳӣ бомуваффақият захира шуд.'), backgroundColor: Colors.teal),
+                    const SnackBar(content: Text('Баҳодиҳӣ бомуваффақият захира шуд.'), backgroundColor: Colors.black),
                   );
                   Navigator.of(ctx).pop();
                   _fetchPendingAttempts();
@@ -591,7 +612,6 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
                 );
               } finally {
                 setModalState(() {
-                  isSubmitting = false;
                 });
               }
             }
@@ -612,17 +632,17 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
                         child: Container(
                           width: 40,
                           height: 4,
-                          decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+                          decoration: BoxDecoration(color: textColor.withOpacity(0.2), borderRadius: BorderRadius.circular(2)),
                         ),
                       ),
                       const SizedBox(height: 24),
                       Text(
                         'Тафтиш: ${attemptDetail['studentName']}',
-                        style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                        style: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.bold),
                       ),
                       Text(
                         'Тест: ${attemptDetail['testTitle']}',
-                        style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 14),
+                        style: TextStyle(color: textColor.withOpacity(0.6), fontSize: 14),
                       ),
                       const SizedBox(height: 20),
 
@@ -635,9 +655,9 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
                           margin: const EdgeInsets.only(bottom: 16),
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(isClosed ? 0.05 : 0.02),
+                            color: textColor.withOpacity(0.03),
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: Colors.white.withOpacity(isClosed ? 0.1 : 0.04)),
+                            border: Border.all(color: textColor.withOpacity(0.1)),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -648,7 +668,7 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                     decoration: BoxDecoration(
-                                      color: isClosed ? Colors.amber.withOpacity(0.1) : Colors.deepPurple.withOpacity(0.1),
+                                      color: textColor.withOpacity(0.1),
                                       borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: Text(
@@ -656,7 +676,7 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
                                           ? 'Рост/Дурӯғ'
                                           : (isClosed ? 'Саволи Хаттӣ' : 'Интихобӣ'),
                                       style: TextStyle(
-                                        color: isClosed ? Colors.amber : Colors.deepPurpleAccent,
+                                        color: textColor,
                                         fontSize: 10,
                                         fontWeight: FontWeight.bold,
                                       ),
@@ -665,31 +685,31 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
                                   if (!isClosed)
                                     Text(
                                       'Балл: ${ans['earnedPoints']} / $maxPoints',
-                                      style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold),
+                                      style: TextStyle(color: textColor.withOpacity(0.7), fontSize: 12, fontWeight: FontWeight.bold),
                                     )
                                   else
                                     Row(
                                       children: [
-                                        const Text('Балл: ', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                                        Text('Балл: ', style: TextStyle(color: textColor.withOpacity(0.7), fontSize: 12)),
                                         SizedBox(
                                           width: 60,
                                           height: 35,
                                           child: TextField(
                                             keyboardType: TextInputType.number,
                                             textAlign: TextAlign.center,
-                                            style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 14),
+                                            style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 14),
                                             controller: controllers[answerId],
                                             scrollPadding: const EdgeInsets.all(120),
                                             decoration: InputDecoration(
                                               contentPadding: EdgeInsets.zero,
-                                              fillColor: Colors.black26,
+                                              fillColor: textColor.withOpacity(0.05),
                                               filled: true,
-                                              enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white.withOpacity(0.2)), borderRadius: BorderRadius.circular(8)),
-                                              focusedBorder: OutlineInputBorder(borderSide: const BorderSide(color: Colors.amber, width: 1.5), borderRadius: BorderRadius.circular(8)),
+                                              enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: textColor.withOpacity(0.2)), borderRadius: BorderRadius.circular(8)),
+                                              focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: textColor, width: 1.5), borderRadius: BorderRadius.circular(8)),
                                             ),
                                           ),
                                         ),
-                                        Text(' / $maxPoints', style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                                        Text(' / $maxPoints', style: TextStyle(color: textColor.withOpacity(0.5), fontSize: 12)),
                                       ],
                                     ),
                                 ],
@@ -697,14 +717,14 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
                               const SizedBox(height: 12),
                               Text(
                                 ans['questionText'],
-                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                                style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 14),
                               ),
                               const SizedBox(height: 8),
                               Container(
                                 width: double.infinity,
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
-                                  color: Colors.black12,
+                                  color: textColor.withOpacity(0.05),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Column(
@@ -712,7 +732,7 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
                                   children: [
                                     Text(
                                       'Ҷавоби донишҷӯ:',
-                                      style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11, fontWeight: FontWeight.bold),
+                                      style: TextStyle(color: textColor.withOpacity(0.4), fontSize: 11, fontWeight: FontWeight.bold),
                                     ),
                                     const SizedBox(height: 4),
                                     (() {
@@ -741,13 +761,8 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
                                                   }
                                                 }
                                               },
-                                              icon: const Icon(Icons.open_in_new, size: 16, color: Colors.white),
-                                              label: const Text('Кушодани файл', style: TextStyle(color: Colors.white)),
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor: Colors.teal,
-                                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                              ),
+                                              icon: Icon(Icons.open_in_new, size: 16, color: isDarkMode ? Colors.black : Colors.white),
+                                              label: const Text('Кушодани файл'),
                                             ),
                                           ),
                                         );
@@ -755,7 +770,7 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
                                         return Text(
                                           studentAnswer.isNotEmpty ? studentAnswer : 'Ҷавоб дода нашудааст',
                                           style: TextStyle(
-                                            color: isClosed ? Colors.amberAccent : Colors.white,
+                                            color: textColor,
                                             fontSize: 13,
                                             fontWeight: isClosed ? FontWeight.bold : FontWeight.normal,
                                           ),
@@ -771,18 +786,10 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
                       }).toList(),
 
                       const SizedBox(height: 24),
-                      if (isSubmitting)
-                        const Center(child: CircularProgressIndicator(color: Colors.deepPurpleAccent))
-                      else
-                        ElevatedButton(
-                          onPressed: submitGrades,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.teal,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          ),
-                          child: const Text('Тасдиқи баҳоҳо ва фиристодан', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                        ),
+                      ElevatedButton(
+                        onPressed: submitGrades,
+                        child: const Text('Тасдиқи баҳоҳо ва фиристодан'),
+                      ),
                     ],
                   );
                 },
@@ -795,8 +802,11 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
   }
 
   Widget _buildStudentsList() {
+    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
+    final textColor = isDarkMode ? Colors.white : Colors.black;
+
     if (_isLoadingStudents) {
-      return const Center(child: CircularProgressIndicator(color: Colors.deepPurpleAccent));
+      return Center(child: CircularProgressIndicator(color: textColor));
     }
 
     if (_students.isEmpty) {
@@ -804,18 +814,17 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.people_outline, size: 64, color: Colors.white.withOpacity(0.3)),
+            Icon(Icons.people_outline, size: 64, color: textColor.withOpacity(0.3)),
             const SizedBox(height: 16),
             Text(
               'Ҳеҷ донишҷӯ пайваст карда нашудааст',
-              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16),
+              style: TextStyle(color: textColor.withOpacity(0.5), fontSize: 16),
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: _showLinkStudentDialog,
-              icon: const Icon(Icons.add, color: Colors.white),
-              label: const Text('Пайваст кардани донишҷӯ', style: TextStyle(color: Colors.white)),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.deepPurpleAccent),
+              icon: Icon(Icons.add, color: isDarkMode ? Colors.black : Colors.white),
+              label: const Text('Пайваст кардани донишҷӯ'),
             ),
           ],
         ),
@@ -849,9 +858,18 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
               margin: const EdgeInsets.only(bottom: 16),
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.03),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withOpacity(0.05)),
+                color: isDarkMode ? Theme.of(context).cardColor : Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isDarkMode ? Colors.white10 : const Color(0xFF1E7431).withOpacity(0.15),
+                ),
+                boxShadow: isDarkMode ? [] : [
+                  BoxShadow(
+                    color: const Color(0xFF228B22).withOpacity(0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -863,17 +881,31 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
                         children: [
                           GestureDetector(
                             onTap: () => _pickAndUploadStudentAvatar(student['id']),
-                            child: CircleAvatar(
-                              backgroundColor: Colors.deepPurpleAccent.withOpacity(0.15),
-                              backgroundImage: student['imageUrl'] != null && student['imageUrl'].toString().isNotEmpty
-                                  ? NetworkImage(_getFullImageUrl(student['imageUrl'].toString()))
-                                  : null,
-                              child: student['imageUrl'] != null && student['imageUrl'].toString().isNotEmpty
-                                  ? null
-                                  : Text(
-                                      _getInitials(student['name']),
-                                      style: const TextStyle(color: Colors.deepPurpleAccent, fontWeight: FontWeight.bold),
-                                    ),
+                            child: Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: isDarkMode ? Colors.white24 : const Color(0xFF1E7431).withOpacity(0.2),
+                                  width: 2,
+                                ),
+                              ),
+                              child: CircleAvatar(
+                                radius: 24,
+                                backgroundColor: isDarkMode ? Colors.white12 : const Color(0xFFEBF3ED),
+                                backgroundImage: student['imageUrl'] != null && student['imageUrl'].toString().isNotEmpty
+                                    ? NetworkImage(_getFullImageUrl(student['imageUrl'].toString()))
+                                    : null,
+                                child: student['imageUrl'] != null && student['imageUrl'].toString().isNotEmpty
+                                    ? null
+                                    : Text(
+                                        _getInitials(student['name']),
+                                        style: TextStyle(
+                                          color: isDarkMode ? Colors.white : const Color(0xFF1E7431),
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                              ),
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -882,27 +914,27 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
                             children: [
                               Text(
                                 student['name'],
-                                style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                                style: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.bold),
                               ),
                               Text(
                                 student['email'],
-                                style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 13),
+                                style: TextStyle(color: textColor.withOpacity(0.4), fontSize: 13),
                               ),
                             ],
                           ),
                         ],
                       ),
-                      const Icon(Icons.arrow_forward_ios, color: Colors.white30, size: 16),
+                      Icon(Icons.arrow_forward_ios, color: textColor.withOpacity(0.3), size: 16),
                     ],
                   ),
                   const Divider(height: 32, thickness: 1),
                   Text(
                     'Китобҳои дастрасшуда (${books.length}):',
-                    style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 14, fontWeight: FontWeight.bold),
+                    style: TextStyle(color: textColor.withOpacity(0.6), fontSize: 14, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
                   books.isEmpty
-                      ? Text('Ҳеҷ китоб дастрас нест.', style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 13))
+                      ? Text('Ҳеҷ китоб дастрас нест.', style: TextStyle(color: textColor.withOpacity(0.3), fontSize: 13))
                       : Wrap(
                           spacing: 8,
                           runSpacing: 8,
@@ -910,12 +942,15 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
                             return Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.05),
+                                color: isDarkMode ? Colors.white.withOpacity(0.05) : const Color(0xFFEBF3ED),
                                 borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: isDarkMode ? Colors.white10 : const Color(0xFF1E7431).withOpacity(0.15),
+                                ),
                               ),
                               child: Text(
-                                b['title'],
-                                style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                _cleanTitle(b['title'] ?? ''),
+                                style: TextStyle(color: isDarkMode ? textColor.withOpacity(0.8) : const Color(0xFF1E7431), fontSize: 12, fontWeight: FontWeight.bold),
                               ),
                             );
                           }).toList(),
@@ -928,15 +963,19 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showLinkStudentDialog,
-        backgroundColor: Colors.deepPurpleAccent,
+        backgroundColor: const Color(0xFF1E7431),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
         child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }
 
   Widget _buildGradingList() {
+    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
+    final textColor = isDarkMode ? Colors.white : Colors.black;
+
     if (_isLoadingAttempts) {
-      return const Center(child: CircularProgressIndicator(color: Colors.deepPurpleAccent));
+      return Center(child: CircularProgressIndicator(color: isDarkMode ? const Color(0xFFA3E635) : const Color(0xFF1E7431)));
     }
 
     if (_pendingAttempts.isEmpty) {
@@ -944,11 +983,18 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.check_circle_outline, size: 64, color: Colors.teal.withOpacity(0.4)),
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: isDarkMode ? const Color(0xFF1A241D) : const Color(0xFFEBF3ED),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.check, size: 48, color: Color(0xFF228B22)),
+            ),
             const SizedBox(height: 16),
             Text(
               'Ҳамаи тестҳо тафтиш шудаанд!',
-              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16),
+              style: TextStyle(color: isDarkMode ? const Color(0xFF788C7D) : const Color(0xFF657367), fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -965,9 +1011,18 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.03),
+            color: isDarkMode ? Theme.of(context).cardColor : Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withOpacity(0.05)),
+            border: Border.all(
+              color: isDarkMode ? Colors.white10 : const Color(0xFF1E7431).withOpacity(0.15),
+            ),
+            boxShadow: isDarkMode ? [] : [
+              BoxShadow(
+                color: const Color(0xFF228B22).withOpacity(0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -978,16 +1033,16 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
                   children: [
                     Text(
                       attempt['studentName'],
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                      style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 16),
                     ),
                     Text(
                       attempt['studentEmail'],
-                      style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12),
+                      style: TextStyle(color: isDarkMode ? const Color(0xFF788C7D) : const Color(0xFF657367), fontSize: 12),
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      attempt['testTitle'],
-                      style: const TextStyle(color: Colors.white70, fontSize: 14),
+                      _cleanTitle(attempt['testTitle'] ?? ''),
+                      style: TextStyle(color: isDarkMode ? const Color(0xFFA3E635) : const Color(0xFF1E7431), fontSize: 14, fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
@@ -995,10 +1050,11 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
               ElevatedButton(
                 onPressed: () => _showGradingBottomSheet(attempt['attemptId']),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.deepPurpleAccent,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  backgroundColor: const Color(0xFF1E7431),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
                 ),
-                child: const Text('Тафтиш', style: TextStyle(color: Colors.white)),
+                child: const Text('Тафтиш'),
               ),
             ],
           ),
@@ -1008,8 +1064,11 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
   }
 
   Widget _buildTestsList() {
+    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
+    final textColor = isDarkMode ? Colors.white : Colors.black;
+
     if (_isLoadingTests) {
-      return const Center(child: CircularProgressIndicator(color: Colors.deepPurpleAccent));
+      return Center(child: CircularProgressIndicator(color: isDarkMode ? const Color(0xFFA3E635) : const Color(0xFF1E7431)));
     }
 
     return Scaffold(
@@ -1019,11 +1078,11 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.quiz_outlined, size: 64, color: Colors.white.withOpacity(0.3)),
+                  Icon(Icons.quiz_outlined, size: 64, color: isDarkMode ? const Color(0xFF788C7D) : const Color(0xFF657367)),
                   const SizedBox(height: 16),
                   Text(
                     'Ҳеҷ тест сохта нашудааст',
-                    style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16),
+                    style: TextStyle(color: isDarkMode ? const Color(0xFF788C7D) : const Color(0xFF657367), fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ],
               ),
@@ -1037,23 +1096,32 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
 
                 return Container(
                   margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.03),
+                    color: isDarkMode ? Theme.of(context).cardColor : Colors.white,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.white.withOpacity(0.05)),
+                    border: Border.all(
+                      color: isDarkMode ? Colors.white10 : const Color(0xFF1E7431).withOpacity(0.15),
+                    ),
+                    boxShadow: isDarkMode ? [] : [
+                      BoxShadow(
+                        color: const Color(0xFF228B22).withOpacity(0.04),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
                   ),
                   child: ListTile(
                     contentPadding: EdgeInsets.zero,
                     title: Text(
-                      test['title'] ?? '',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      _cleanTitle(test['title'] ?? ''),
+                      style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
                     ),
                     subtitle: Text(
                       '${questions.length} савол • ${test['description'] ?? "Имтиҳон"}',
-                      style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13),
+                      style: TextStyle(color: isDarkMode ? const Color(0xFF788C7D) : const Color(0xFF657367), fontSize: 13),
                     ),
-                    trailing: const Icon(Icons.quiz, color: Colors.deepPurpleAccent),
+                    trailing: Icon(Icons.quiz, color: isDarkMode ? const Color(0xFFA3E635) : const Color(0xFF1E7431)),
                   ),
                 );
               },
@@ -1068,7 +1136,8 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
             _fetchTests();
           }
         },
-        backgroundColor: Colors.deepPurpleAccent,
+        backgroundColor: const Color(0xFF1E7431),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
         child: const Icon(Icons.add, color: Colors.white),
       ),
     );
@@ -1086,22 +1155,35 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
   Widget build(BuildContext context) {
     final teacher = Provider.of<AuthProvider>(context).currentUser;
     final teacherName = teacher?.name ?? 'Муаллим';
+    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
+    final textColor = isDarkMode ? Colors.white : Colors.black;
+
+    if (_isLoadingStudents || _isLoadingTests || _isLoadingAttempts) {
+      return Scaffold(
+        backgroundColor: isDarkMode ? const Color(0xFF0D120E) : const Color(0xFFEBF3ED),
+        body: Center(
+          child: CircularProgressIndicator(
+            color: isDarkMode ? const Color(0xFFA3E635) : const Color(0xFF1E7431),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F0C20),
+      backgroundColor: isDarkMode ? const Color(0xFF0D120E) : const Color(0xFFEBF3ED),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF15102A),
+        backgroundColor: isDarkMode ? const Color(0xFF162218) : Colors.white,
         elevation: 0,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               teacherName,
-              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.bold),
             ),
             Text(
               'Панели назорати муаллим',
-              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+              style: TextStyle(color: isDarkMode ? const Color(0xFF788C7D) : const Color(0xFF657367), fontSize: 12),
             ),
           ],
         ),
@@ -1115,9 +1197,9 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
           controller: _tabController,
           isScrollable: true,
           tabAlignment: TabAlignment.start,
-          indicatorColor: Colors.deepPurpleAccent,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white.withOpacity(0.4),
+          indicatorColor: isDarkMode ? const Color(0xFFA3E635) : const Color(0xFF1E7431),
+          labelColor: isDarkMode ? const Color(0xFFA3E635) : const Color(0xFF1E7431),
+          unselectedLabelColor: isDarkMode ? const Color(0xFF788C7D) : const Color(0xFF657367),
           tabs: [
             const Tab(text: 'Донишҷӯён'),
             const Tab(text: 'Тестҳо'),
@@ -1130,10 +1212,17 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
                     Container(
                       margin: const EdgeInsets.only(left: 6),
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(color: Colors.redAccent, borderRadius: BorderRadius.circular(10)),
+                      decoration: BoxDecoration(
+                        color: isDarkMode ? const Color(0xFFA3E635) : const Color(0xFF1E7431),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                       child: Text(
                         '${_pendingAttempts.length}',
-                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          color: isDarkMode ? const Color(0xFF0D120E) : Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                 ],

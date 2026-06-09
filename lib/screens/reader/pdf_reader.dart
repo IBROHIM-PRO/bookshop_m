@@ -3,11 +3,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart'; // Пакети нав
+import 'package:pdfrx/pdfrx.dart'; // Пакети нави pdfrx барои скролли зуд ва сабук
 import '../../models/book.dart';
-import '../../providers/theme_provider.dart';
 import '../../services/api_service.dart';
 
 class PdfReaderScreen extends StatefulWidget {
@@ -37,7 +35,6 @@ class _PdfReaderScreenState extends State<PdfReaderScreen> {
 
   @override
   void dispose() {
-    _pdfViewerController.dispose();
     super.dispose();
   }
 
@@ -57,6 +54,19 @@ class _PdfReaderScreenState extends State<PdfReaderScreen> {
     });
 
     try {
+      final appDir = await getApplicationDocumentsDirectory();
+      final file = File('${appDir.path}/secure_book_${widget.book.id}.pdf');
+
+      if (await file.exists() && await file.length() > 0) {
+        if (mounted) {
+          setState(() {
+            _localFilePath = file.path;
+            _isLoading = false;
+          });
+        }
+        return;
+      }
+
       // 1. Request access ticket from backend
       final ticketResponse = await ApiService.post(
         '/api/books/${widget.book.id}/request-ticket',
@@ -121,9 +131,7 @@ class _PdfReaderScreenState extends State<PdfReaderScreen> {
         }
       }
 
-      // 5. Save locally in temporary directory
-      final tempDir = await getTemporaryDirectory();
-      final file = File('${tempDir.path}/book_${widget.book.id}.pdf');
+      // 5. Save locally in internal directory
       await file.writeAsBytes(bytes);
 
       if (mounted) {
@@ -144,13 +152,12 @@ class _PdfReaderScreenState extends State<PdfReaderScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isBw = Provider.of<ThemeProvider>(context).isBlackAndWhite;
     final theme = Theme.of(context);
     final primaryColor = theme.colorScheme.primary;
 
-    final bgColor = isBw ? Colors.black : const Color(0xFF0F0C20);
-    final textColor = isBw ? Colors.white : Colors.white.withOpacity(0.9);
-    final appBarColor = isBw ? Colors.black : const Color(0xFF15102A);
+    final bgColor = theme.scaffoldBackgroundColor;
+    final textColor = theme.colorScheme.onSurface;
+    final appBarColor = theme.appBarTheme.backgroundColor;
 
     Widget body;
 
@@ -197,7 +204,7 @@ class _PdfReaderScreenState extends State<PdfReaderScreen> {
                 label: const Text('Боз кӯшиш кунед'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primaryColor,
-                  foregroundColor: isBw ? Colors.black : Colors.white,
+                  foregroundColor: theme.colorScheme.onPrimary,
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
@@ -207,13 +214,10 @@ class _PdfReaderScreenState extends State<PdfReaderScreen> {
         ),
       );
     } else {
-      // Истифодаи SfPdfViewer, ки ҳама корро худкор иҷро мекунад
-      body = SfPdfViewer.file(
-        File(_localFilePath!),
+      // Истифодаи PdfViewer аз пакети pdfrx барои хониши суръатнок ва скролли зуд
+      body = PdfViewer.file(
+        _localFilePath!,
         controller: _pdfViewerController,
-        canShowScrollHead: true, // Нишон додани тугмаи ҳаракати зуд
-        canShowScrollStatus: true, // Худкор нишон додани "Саҳифаи X аз Y" ҳангоми скролл
-        enableDoubleTapZooming: true, // Зум бо ду бор пахш кардан
       );
     }
 
@@ -222,11 +226,11 @@ class _PdfReaderScreenState extends State<PdfReaderScreen> {
       appBar: AppBar(
         backgroundColor: appBarColor,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
+        iconTheme: IconThemeData(color: theme.colorScheme.onSurface),
         title: Text(
           widget.book.title,
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: theme.colorScheme.onSurface,
             fontSize: 18,
             fontWeight: FontWeight.bold,
           ),

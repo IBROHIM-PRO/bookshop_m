@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../services/api_service.dart';
 import '../../providers/theme_provider.dart';
 
@@ -25,7 +26,6 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> with SingleTicker
   dynamic _selectedUser;
 
   // Retry logic
-  int _retryCount = 0;
   static const int _maxRetries = 3;
   static const Duration _retryDelay = Duration(seconds: 1);
 
@@ -86,7 +86,6 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> with SingleTicker
             }
 
             _isLoading = false;
-            _retryCount = 0;
           });
           return;
         } else {
@@ -117,18 +116,28 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> with SingleTicker
     return '${rank}th';
   }
 
-  Widget _buildTopAppBar(bool isBw) {
+  Widget _buildTopAppBar(bool isDarkMode, BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Text(
-            'Рӯйхати пешсафон',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
+          IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          const Expanded(
+            child: Center(
+              child: Padding(
+                padding: EdgeInsets.only(right: 48), // Offset back button to center title
+                child: Text(
+                  'Рӯйхати пешсафон',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
             ),
           ),
         ],
@@ -136,15 +145,19 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> with SingleTicker
     );
   }
 
-  Widget _buildStatBox(String label, String value, IconData icon) {
+  Widget _buildStatBox(String label, String value, IconData icon, Color textColor, bool isDarkMode) {
     return Column(
       children: [
-        Icon(icon, color: Colors.deepPurple[300], size: 24),
+        Icon(
+          icon, 
+          color: isDarkMode ? textColor.withOpacity(0.5) : const Color(0xFF1E7431), 
+          size: 24
+        ),
         const SizedBox(height: 6),
         Text(
           value,
-          style: const TextStyle(
-            color: Color(0xFF1E1C24),
+          style: TextStyle(
+            color: textColor,
             fontSize: 16,
             fontWeight: FontWeight.bold,
           ),
@@ -153,7 +166,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> with SingleTicker
         Text(
           label,
           style: TextStyle(
-            color: Colors.grey[500],
+            color: isDarkMode ? textColor.withOpacity(0.4) : const Color(0xFF657367),
             fontSize: 11,
           ),
         ),
@@ -161,7 +174,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> with SingleTicker
     );
   }
 
-  Widget _buildTopStatsCard(bool isBw) {
+  Widget _buildTopStatsCard(bool isDarkMode, Color textColor) {
     if (_selectedUser == null) {
       return const SizedBox.shrink();
     }
@@ -176,37 +189,41 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> with SingleTicker
       margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDarkMode ? const Color(0xFF121212) : Colors.white,
         borderRadius: BorderRadius.circular(28),
-        boxShadow: [
+        border: Border.all(
+          color: isDarkMode ? textColor.withOpacity(0.1) : const Color(0xFFD1E2D5),
+        ),
+        boxShadow: isDarkMode ? [] : [
           BoxShadow(
-            color: Colors.black.withOpacity(0.18),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+            color: const Color(0xFF228B22).withOpacity(0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 5),
           ),
         ],
       ),
       child: Column(
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const SizedBox(width: 32),
               Container(
                 width: 64,
                 height: 64,
                 decoration: BoxDecoration(
-                  color: Colors.amber.withOpacity(0.12),
+                  color: isDarkMode ? textColor.withOpacity(0.05) : const Color(0xFFEBF3ED),
                   shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isDarkMode ? textColor.withOpacity(0.1) : const Color(0xFFD1E2D5),
+                  ),
                 ),
-                child: const Center(
-                  child: Icon(Icons.emoji_events, color: Colors.amber, size: 36),
+                child: Center(
+                  child: Icon(
+                    Icons.emoji_events_outlined, 
+                    color: isDarkMode ? textColor : const Color(0xFF1E7431), 
+                    size: 36
+                  ),
                 ),
-              ),
-              IconButton(
-                icon: Icon(Icons.reply_outlined, color: Colors.grey[400], size: 24),
-                onPressed: () {},
               ),
             ],
           ),
@@ -214,8 +231,8 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> with SingleTicker
           Text(
             name,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Color(0xFF1E1C24),
+            style: TextStyle(
+              color: textColor,
               fontSize: 20,
               fontWeight: FontWeight.bold,
             ),
@@ -224,33 +241,36 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> with SingleTicker
           Text(
             'Натиҷаи умумӣ: ($averagePercentage%)',
             style: TextStyle(
-              color: Colors.deepPurple[400],
+              color: isDarkMode ? textColor.withOpacity(0.6) : const Color(0xFF657367),
               fontSize: 13,
               fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 16),
-          Divider(color: Colors.grey[100], thickness: 1.5),
+          Divider(
+            color: isDarkMode ? textColor.withOpacity(0.1) : const Color(0xFFD1E2D5), 
+            thickness: 1.5
+          ),
           const SizedBox(height: 12),
           if (subjectStats.isEmpty)
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildStatBox('Гурӯҳ', user['groupName'] ?? 'Бе гурӯҳ', Icons.group_outlined),
-                _buildStatBox('Холҳои умумӣ', '$points', Icons.military_tech_outlined),
-                _buildStatBox('Рейтинг', '#${user['rank']}', Icons.leaderboard_outlined),
+                _buildStatBox('Гурӯҳ', user['groupName'] ?? 'Бе гурӯҳ', Icons.group_outlined, textColor, isDarkMode),
+                _buildStatBox('Холҳо', '$points', Icons.military_tech_outlined, textColor, isDarkMode),
+                _buildStatBox('Рейтинг', '#${user['rank']}', Icons.leaderboard_outlined, textColor, isDarkMode),
               ],
             )
           else
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Padding(
-                  padding: EdgeInsets.only(left: 4, bottom: 10),
+                Padding(
+                  padding: const EdgeInsets.only(left: 4, bottom: 10),
                   child: Text(
                     'НАТИҶАҲО АЗ РӮИ ФАНҲО:',
                     style: TextStyle(
-                      color: Colors.black38,
+                      color: isDarkMode ? textColor.withOpacity(0.4) : const Color(0xFF657367),
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 1.1,
@@ -274,9 +294,12 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> with SingleTicker
                         margin: const EdgeInsets.only(right: 12),
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF3E5F5),
+                          color: isDarkMode ? textColor.withOpacity(0.05) : const Color(0xFFEBF3ED),
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.deepPurple.withOpacity(0.15), width: 1.2),
+                          border: Border.all(
+                            color: isDarkMode ? textColor.withOpacity(0.1) : const Color(0xFFD1E2D5), 
+                            width: 1.2
+                          ),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -286,8 +309,8 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> with SingleTicker
                               subName,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Color(0xFF4A148C),
+                              style: TextStyle(
+                                color: isDarkMode ? textColor : const Color(0xFF1A1F1C),
                                 fontWeight: FontWeight.bold,
                                 fontSize: 11,
                               ),
@@ -295,8 +318,8 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> with SingleTicker
                             const SizedBox(height: 3),
                             Text(
                               '$subPercent%',
-                              style: const TextStyle(
-                                color: Colors.green,
+                              style: TextStyle(
+                                color: isDarkMode ? textColor : const Color(0xFF1E7431),
                                 fontWeight: FontWeight.bold,
                                 fontSize: 15,
                               ),
@@ -305,7 +328,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> with SingleTicker
                             Text(
                               '$subTests тест / $subPoints хол',
                               style: TextStyle(
-                                color: Colors.grey[600],
+                                color: isDarkMode ? textColor.withOpacity(0.5) : const Color(0xFF657367),
                                 fontSize: 9,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -323,64 +346,64 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> with SingleTicker
     );
   }
 
-  Widget _buildTabBar(bool isBw) {
+  Widget _buildTabBar(bool isDarkMode, Color textColor) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       child: TabBar(
         controller: _tabController,
-        indicatorColor: Colors.deepPurple,
+        indicatorColor: textColor,
         indicatorSize: TabBarIndicatorSize.label,
-        labelColor: Colors.deepPurple,
-        unselectedLabelColor: Colors.grey[400],
-        labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+        labelColor: textColor,
+        unselectedLabelColor: textColor.withOpacity(0.4),
+        labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
         tabs: [
           const Tab(text: 'Топ 10 (Ҳама)'),
-          Tab(text: 'Топ 3 (Гурӯҳ $_myGroupName)'),
+          Tab(text: 'Топ 3 ($_myGroupName)'),
         ],
       ),
     );
   }
 
-  Widget _buildColumnHeaders(bool isBw) {
+  Widget _buildColumnHeaders(Color textColor) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
       child: Row(
         children: [
-          const SizedBox(
+          SizedBox(
             width: 36,
             child: Text(
               'Ҷой',
-              style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold),
+              style: TextStyle(color: textColor.withOpacity(0.4), fontSize: 11, fontWeight: FontWeight.bold),
             ),
           ),
           const SizedBox(width: 16),
-          const Expanded(
+          Expanded(
             child: Text(
               'Истифодабаранда',
-              style: TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold),
+              style: TextStyle(color: textColor.withOpacity(0.4), fontSize: 11, fontWeight: FontWeight.bold),
             ),
           ),
           Text(
-            'Натиҷа (фоиз)',
-            style: TextStyle(color: Colors.grey[400], fontSize: 11, fontWeight: FontWeight.bold),
+            'Натиҷа (%)',
+            style: TextStyle(color: textColor.withOpacity(0.4), fontSize: 11, fontWeight: FontWeight.bold),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildLeaderboardList(List<dynamic> list, bool isBw) {
+  Widget _buildLeaderboardList(List<dynamic> list, bool isDarkMode, Color textColor) {
     if (list.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.emoji_events_outlined, size: 48, color: Colors.grey[300]),
+            Icon(Icons.emoji_events_outlined, size: 48, color: textColor.withOpacity(0.2)),
             const SizedBox(height: 12),
-            const Text(
+            Text(
               'Рӯйхат холӣ аст',
-              style: TextStyle(color: Colors.grey),
+              style: TextStyle(color: textColor.withOpacity(0.4)),
             ),
           ],
         ),
@@ -412,18 +435,14 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> with SingleTicker
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               color: isSelected
-                  ? const Color(0xFFE8F5E9)
-                  : (rank == 1
-                      ? Colors.amber.withOpacity(0.05)
-                      : Colors.transparent),
+                  ? textColor.withOpacity(0.1)
+                  : Colors.transparent,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: isSelected
-                    ? Colors.green.withOpacity(0.4)
-                    : (rank == 1
-                        ? Colors.amber.withOpacity(0.3)
-                        : Colors.grey[100]!),
-                width: isSelected ? 2.0 : 1.0,
+                    ? textColor
+                    : textColor.withOpacity(0.05),
+                width: isSelected ? 1.5 : 1.0,
               ),
             ),
             child: Row(
@@ -433,45 +452,25 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> with SingleTicker
                   child: Text(
                     _getRankText(rank),
                     style: TextStyle(
-                      color: rank == 1
-                          ? Colors.amber[800]
-                          : (rank == 2
-                              ? Colors.grey[600]
-                              : (rank == 3
-                                  ? Colors.brown[600]
-                                  : Colors.black54)),
+                      color: textColor,
                       fontWeight: FontWeight.bold,
                       fontSize: 13,
                     ),
                   ),
                 ),
                 const SizedBox(width: 8),
-                Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    CircleAvatar(
-                      radius: 20,
-                      backgroundColor: Colors.deepPurple[100],
-                      backgroundImage: user['imageUrl'] != null && user['imageUrl'].toString().isNotEmpty
-                          ? NetworkImage(_getFullImageUrl(user['imageUrl'].toString()))
-                          : null,
-                      child: user['imageUrl'] != null && user['imageUrl'].toString().isNotEmpty
-                          ? null
-                          : Text(
-                              _getInitials(name),
-                              style: const TextStyle(color: Colors.deepPurple, fontWeight: FontWeight.bold),
-                            ),
-                    ),
-                    if (rank == 1)
-                      const Positioned(
-                        top: -10,
-                        left: 12,
-                        child: RotationTransition(
-                          turns: AlwaysStoppedAnimation(15 / 360),
-                          child: Icon(Icons.star, color: Colors.amber, size: 16),
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: textColor.withOpacity(0.1),
+                  backgroundImage: user['imageUrl'] != null && user['imageUrl'].toString().isNotEmpty
+                      ? CachedNetworkImageProvider(_getFullImageUrl(user['imageUrl'].toString()))
+                      : null,
+                  child: user['imageUrl'] != null && user['imageUrl'].toString().isNotEmpty
+                      ? null
+                      : Text(
+                          _getInitials(name),
+                          style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
                         ),
-                      ),
-                  ],
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -480,8 +479,8 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> with SingleTicker
                     children: [
                       Text(
                         name,
-                        style: const TextStyle(
-                          color: Color(0xFF1E1C24),
+                        style: TextStyle(
+                          color: textColor,
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
                         ),
@@ -489,11 +488,10 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> with SingleTicker
                       const SizedBox(height: 2),
                       Row(
                         children: [                        
-                          const SizedBox(width: 4),
                           Text(
                             '$points хол',
                             style: TextStyle(
-                              color: Colors.amber[800],
+                              color: textColor.withOpacity(0.7),
                               fontWeight: FontWeight.w600,
                               fontSize: 11,
                             ),
@@ -502,7 +500,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> with SingleTicker
                           Text(
                             '•  $groupName',
                             style: TextStyle(
-                              color: Colors.grey[500],
+                              color: textColor.withOpacity(0.4),
                               fontSize: 11,
                             ),
                           ),
@@ -513,8 +511,8 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> with SingleTicker
                 ),
                 Text(
                   '$percentage%',
-                  style: const TextStyle(
-                    color: Color(0xFF1E1C24),
+                  style: TextStyle(
+                    color: textColor,
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
                   ),
@@ -529,31 +527,32 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> with SingleTicker
 
   @override
   Widget build(BuildContext context) {
-    final isBw = Provider.of<ThemeProvider>(context).isBlackAndWhite;
+    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
+    final textColor = isDarkMode ? Colors.white : Colors.black;
+    final backgroundColor = isDarkMode ? Colors.black : Colors.white;
 
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: isBw ? Colors.white : const Color(0xFF0F0C20),
-        body: const Center(child: CircularProgressIndicator(color: Colors.deepPurpleAccent)),
+        backgroundColor: backgroundColor,
+        body: Center(child: CircularProgressIndicator(color: textColor)),
       );
     }
 
     if (_error != null) {
       return Scaffold(
-        backgroundColor: isBw ? Colors.white : const Color(0xFF0F0C20),
+        backgroundColor: backgroundColor,
         body: SafeArea(
           child: Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.error_outline, size: 60, color: Colors.redAccent.withOpacity(0.6)),
+                Icon(Icons.error_outline, size: 60, color: textColor.withOpacity(0.3)),
                 const SizedBox(height: 16),
-                Text(_error!, style: const TextStyle(color: Colors.white)),
-                const SizedBox(height: 16),
+                Text(_error!, style: TextStyle(color: textColor)),
+                const SizedBox(height: 24),
                 ElevatedButton(
                   onPressed: _fetchLeaderboardData,
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.deepPurpleAccent),
-                  child: const Text('Боз кӯшиш кунед', style: TextStyle(color: Colors.white)),
+                  child: const Text('Боз кӯшиш кунед'),
                 )
               ],
             ),
@@ -563,60 +562,52 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> with SingleTicker
     }
 
     return Scaffold(
+      backgroundColor: isDarkMode ? Colors.black : Colors.white,
       body: RefreshIndicator(
         onRefresh: _fetchLeaderboardData,
-        color: Colors.deepPurpleAccent,
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: isBw
-                ? null
-                : const LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Color(0xFF311B92),
-                      Color(0xFF512DA8),
-                    ],
-                  ),
-            color: isBw ? Colors.white : null,
-          ),
-          child: SafeArea(
-            bottom: false,
-            child: Column(
-              children: [
-                _buildTopAppBar(isBw),
-                _buildTopStatsCard(isBw),
-                const SizedBox(height: 16),
-                Expanded(
-                  child: Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: isBw ? const Color(0xFFF9F9F9) : Colors.white,
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(30),
-                        topRight: Radius.circular(30),
+        color: textColor,
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.only(bottom: 24),
+              decoration: BoxDecoration(
+                color: isDarkMode ? const Color(0xFF15102A) : const Color(0xFF1E7431),
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(30),
+                  bottomRight: Radius.circular(30),
+                ),
+              ),
+              child: SafeArea(
+                child: Column(
+                  children: [
+                    _buildTopAppBar(isDarkMode, context),
+                    _buildTopStatsCard(isDarkMode, isDarkMode ? Colors.white : const Color(0xFF1A1F1C)),
+                  ],
+                ),
+              ),
+            ),
+            Expanded(
+              child: Container(
+                width: double.infinity,
+                color: backgroundColor,
+                child: Column(
+                  children: [
+                    _buildTabBar(isDarkMode, textColor),
+                    _buildColumnHeaders(textColor),
+                    Expanded(
+                      child: TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildLeaderboardList(_top10Overall, isDarkMode, textColor),
+                          _buildLeaderboardList(_top3MyGroup, isDarkMode, textColor),
+                        ],
                       ),
                     ),
-                    child: Column(
-                      children: [
-                        _buildTabBar(isBw),
-                        _buildColumnHeaders(isBw),
-                        Expanded(
-                          child: TabBarView(
-                            controller: _tabController,
-                            children: [
-                              _buildLeaderboardList(_top10Overall, isBw),
-                              _buildLeaderboardList(_top3MyGroup, isBw),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  ],
                 ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );

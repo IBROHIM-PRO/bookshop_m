@@ -29,7 +29,6 @@ class _ReaderStatsScreenState extends State<ReaderStatsScreen> {
   DateTime? _customEndDate;
 
   // Retry logic
-  int _retryCount = 0;
   static const int _maxRetries = 3;
   static const Duration _retryDelay = Duration(seconds: 1);
 
@@ -62,7 +61,6 @@ class _ReaderStatsScreenState extends State<ReaderStatsScreen> {
         }
 
         final response = await ApiService.get(url);
-        debugPrint('GET $url -> status: ${response.statusCode}, body: ${response.body}');
 
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
@@ -84,7 +82,6 @@ class _ReaderStatsScreenState extends State<ReaderStatsScreen> {
             _weeklyStreakDays = weeklyStreak.length == 7 ? weeklyStreak : [false, false, false, false, false, false, false];
             _lessonsLearned = lessons.length == 7 ? lessons : [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0];
             _isLoading = false;
-            _retryCount = 0;
           });
           return;
         } else {
@@ -111,14 +108,13 @@ class _ReaderStatsScreenState extends State<ReaderStatsScreen> {
           }
         }
       } catch (e) {
-        debugPrint('Stats fetch error: $e');
         attempt++;
         if (attempt < _maxRetries) {
           await Future.delayed(_retryDelay);
         } else {
           if (!mounted) return;
           setState(() {
-            _error = 'Хатогӣ дар пайвастшавӣ ба сервер: ${e.toString()}';
+            _error = 'Хатогӣ дар пайвастшавӣ ба сервер';
             _isLoading = false;
           });
         }
@@ -136,6 +132,7 @@ class _ReaderStatsScreenState extends State<ReaderStatsScreen> {
   }
 
   Future<void> _selectCustomDateRange(BuildContext context) async {
+    final isDarkMode = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
     final initialDateRange = DateTimeRange(
       start: _customStartDate ?? DateTime.now().subtract(const Duration(days: 7)),
       end: _customEndDate ?? DateTime.now(),
@@ -149,13 +146,17 @@ class _ReaderStatsScreenState extends State<ReaderStatsScreen> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.dark(
-              primary: Color(0xFF6B4FB3),
-              onPrimary: Colors.white,
-              surface: Color(0xFF15102A),
+            colorScheme: isDarkMode ? const ColorScheme.dark(
+              primary: Colors.white,
+              onPrimary: Colors.black,
+              surface: Colors.black,
               onSurface: Colors.white,
+            ) : const ColorScheme.light(
+              primary: Colors.black,
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: Colors.black,
             ),
-            dialogBackgroundColor: const Color(0xFF0F0C20),
           ),
           child: child!,
         );
@@ -200,13 +201,13 @@ class _ReaderStatsScreenState extends State<ReaderStatsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isBw = Provider.of<ThemeProvider>(context).isBlackAndWhite;
+    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
     final theme = Theme.of(context);
-    final textColor = isBw ? Colors.black : Colors.white;
-    final subTextColor = isBw ? Colors.black54 : Colors.white.withOpacity(0.5);
+    final textColor = isDarkMode ? Colors.white : Colors.black;
+    final subTextColor = textColor.withOpacity(0.5);
 
     if (_isLoading) {
-      return Center(child: CircularProgressIndicator(color: theme.colorScheme.primary));
+      return Center(child: CircularProgressIndicator(color: textColor));
     }
 
     if (_error != null) {
@@ -214,27 +215,20 @@ class _ReaderStatsScreenState extends State<ReaderStatsScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.error_outline, size: 60, color: Colors.redAccent.withOpacity(0.6)),
+            Icon(Icons.error_outline, size: 60, color: textColor.withOpacity(0.5)),
             const SizedBox(height: 16),
             Text(_error!, style: TextStyle(color: textColor)),
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: _fetchStatsData,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: theme.colorScheme.primary,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              child: Text(
-                'Боз кӯшиш кунед',
-                style: TextStyle(color: isBw ? Colors.black : Colors.white),
-              ),
+              child: const Text('Боз кӯшиш кунед'),
             ),
           ],
         ),
       );
     }
 
-    final pageBgColor = isBw ? Colors.white : theme.scaffoldBackgroundColor;
+    final pageBgColor = theme.scaffoldBackgroundColor;
 
     // Concentric progress math
     final double booksProgress = (_booksCount / 10.0).clamp(0.0, 1.0);
@@ -251,7 +245,7 @@ class _ReaderStatsScreenState extends State<ReaderStatsScreen> {
       color: pageBgColor,
       child: RefreshIndicator(
         onRefresh: _fetchStatsData,
-        color: theme.colorScheme.primary,
+        color: textColor,
         child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           children: [
@@ -281,7 +275,7 @@ class _ReaderStatsScreenState extends State<ReaderStatsScreen> {
                 ),
                 GestureDetector(
                   onTap: () => _selectCustomDateRange(context),
-                  child: _buildCircleHeaderButton(Icons.calendar_month, isBw),
+                  child: _buildCircleHeaderButton(Icons.calendar_month, isDarkMode, textColor),
                 ),
               ],
             ),
@@ -299,16 +293,17 @@ class _ReaderStatsScreenState extends State<ReaderStatsScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.amber.withOpacity(0.2),
+                      color: textColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: textColor.withOpacity(0.2)),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.local_fire_department, color: Colors.orange, size: 16),
+                        Icon(Icons.local_fire_department, color: textColor, size: 16),
                         const SizedBox(width: 4),
                         Text(
                           '$_dailyStreak рӯз',
-                          style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 12),
+                          style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 12),
                         ),
                       ],
                     ),
@@ -321,21 +316,22 @@ class _ReaderStatsScreenState extends State<ReaderStatsScreen> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: isBw ? const Color(0xFFF5F5F5) : const Color(0xFF6B4FB3),
+                color: textColor.withOpacity(0.05),
                 borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: textColor.withOpacity(0.1)),
               ),
               child: Column(
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      _buildStreakDayName('Sun', isBw),
-                      _buildStreakDayName('Mon', isBw),
-                      _buildStreakDayName('Tue', isBw),
-                      _buildStreakDayName('Wed', isBw),
-                      _buildStreakDayName('Thu', isBw),
-                      _buildStreakDayName('Fri', isBw),
-                      _buildStreakDayName('Sat', isBw),
+                      _buildStreakDayName('Sun', subTextColor),
+                      _buildStreakDayName('Mon', subTextColor),
+                      _buildStreakDayName('Tue', subTextColor),
+                      _buildStreakDayName('Wed', subTextColor),
+                      _buildStreakDayName('Thu', subTextColor),
+                      _buildStreakDayName('Fri', subTextColor),
+                      _buildStreakDayName('Sat', subTextColor),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -344,7 +340,7 @@ class _ReaderStatsScreenState extends State<ReaderStatsScreen> {
                     children: List.generate(7, (index) {
                       final dayDate = startOfWeek.add(Duration(days: index));
                       final completed = _weeklyStreakDays.length > index ? _weeklyStreakDays[index] : false;
-                      return _buildStreakCircle(completed, dayDate.day.toString(), isBw);
+                      return _buildStreakCircle(completed, dayDate.day.toString(), textColor, isDarkMode ? Colors.black : Colors.white);
                     }),
                   ),
                 ],
@@ -363,9 +359,9 @@ class _ReaderStatsScreenState extends State<ReaderStatsScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: isBw ? const Color(0xFFF9F9F9) : Colors.white.withOpacity(0.02),
+                color: textColor.withOpacity(0.03),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: isBw ? Colors.black12 : Colors.white.withOpacity(0.04)),
+                border: Border.all(color: textColor.withOpacity(0.1)),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
@@ -396,7 +392,7 @@ class _ReaderStatsScreenState extends State<ReaderStatsScreen> {
                         final isToday = index == todayNameIndex;
                         final val = _lessonsLearned.length > index ? _lessonsLearned[index] : 0.0;
                         final height = _getBarHeight(val, maxVal);
-                        return _buildBar(height, dayName, isToday, isBw);
+                        return _buildBar(height, dayName, isToday, index);
                       }),
                     ),
                   ),
@@ -418,95 +414,95 @@ class _ReaderStatsScreenState extends State<ReaderStatsScreen> {
               children: [
                 GestureDetector(
                   onTap: () => _selectPreset('1D'),
-                  child: _buildFilterPill('1D', _activePreset == '1D', isBw),
+                  child: _buildFilterPill('1D', _activePreset == '1D', textColor),
                 ),
                 GestureDetector(
                   onTap: () => _selectPreset('1W'),
-                  child: _buildFilterPill('1W', _activePreset == '1W', isBw),
+                  child: _buildFilterPill('1W', _activePreset == '1W', textColor),
                 ),
                 GestureDetector(
                   onTap: () => _selectPreset('1M'),
-                  child: _buildFilterPill('1M', _activePreset == '1M', isBw),
+                  child: _buildFilterPill('1M', _activePreset == '1M', textColor),
                 ),
                 GestureDetector(
                   onTap: () => _selectPreset('6M'),
-                  child: _buildFilterPill('6M', _activePreset == '6M', isBw),
+                  child: _buildFilterPill('6M', _activePreset == '6M', textColor),
                 ),
                 GestureDetector(
                   onTap: () => _selectPreset('1Y'),
-                  child: _buildFilterPill('1Y', _activePreset == '1Y', isBw),
+                  child: _buildFilterPill('1Y', _activePreset == '1Y', textColor),
                 ),
               ],
             ),
             const SizedBox(height: 24),
 
             // Concentric Rings & Legend Row
-            Row(
-              children: [
-                Expanded(
-                  flex: 5,
-                  child: Center(
-                    child: SizedBox(
-                      width: 170,
-                      height: 170,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          // Outer: Китобҳо (Green)
-                          SizedBox(
-                            width: 160,
-                            height: 160,
-                            child: CircularProgressIndicator(
-                              value: booksProgress == 0 ? 0.05 : booksProgress,
-                              strokeWidth: 14,
-                              backgroundColor: Colors.green.withOpacity(0.15),
-                              valueColor: const AlwaysStoppedAnimation<Color>(Colors.green),
-                            ),
-                          ),
-                          // Middle: Тестҳо (Yellow/Orange)
-                          SizedBox(
-                            width: 120,
-                            height: 120,
-                            child: CircularProgressIndicator(
-                              value: testsProgress == 0 ? 0.05 : testsProgress,
-                              strokeWidth: 14,
-                              backgroundColor: Colors.amber.withOpacity(0.15),
-                              valueColor: const AlwaysStoppedAnimation<Color>(Colors.amber),
-                            ),
-                          ),
-                          // Inner: Баҳо (Red/Rose)
-                          SizedBox(
-                            width: 80,
-                            height: 80,
-                            child: CircularProgressIndicator(
-                              value: avgScoreProgress == 0 ? 0.05 : avgScoreProgress,
-                              strokeWidth: 14,
-                              backgroundColor: Colors.redAccent.withOpacity(0.15),
-                              valueColor: const AlwaysStoppedAnimation<Color>(Colors.redAccent),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                // Legend
-                Expanded(
-                  flex: 5,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildLegendItem(Colors.green, 'Китобҳо ($_booksCount)', isBw),
-                      const SizedBox(height: 16),
-                      _buildLegendItem(Colors.amber, 'Тестҳо (${_attempts.length})', isBw),
-                      const SizedBox(height: 16),
-                      _buildLegendItem(Colors.redAccent, 'Баҳо (${_averageScore.toStringAsFixed(0)}%)', isBw),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+             Row(
+               children: [
+                 Expanded(
+                   flex: 5,
+                   child: Center(
+                     child: SizedBox(
+                       width: 170,
+                       height: 170,
+                       child: Stack(
+                         alignment: Alignment.center,
+                         children: [
+                           // Outer: Китобҳо (Brand Green)
+                           SizedBox(
+                             width: 160,
+                             height: 160,
+                             child: CircularProgressIndicator(
+                               value: booksProgress == 0 ? 0.05 : booksProgress,
+                               strokeWidth: 14,
+                               backgroundColor: isDarkMode ? Colors.white10 : const Color(0xFFEBF3ED),
+                               valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF1E7431)),
+                             ),
+                           ),
+                           // Middle: Тестҳо (Light Green)
+                           SizedBox(
+                             width: 120,
+                             height: 120,
+                             child: CircularProgressIndicator(
+                               value: testsProgress == 0 ? 0.05 : testsProgress,
+                               strokeWidth: 14,
+                               backgroundColor: isDarkMode ? Colors.white10 : const Color(0xFFEBF3ED),
+                               valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFA3E635)),
+                             ),
+                           ),
+                           // Inner: Баҳо (Gold)
+                           SizedBox(
+                             width: 80,
+                             height: 80,
+                             child: CircularProgressIndicator(
+                               value: avgScoreProgress == 0 ? 0.05 : avgScoreProgress,
+                               strokeWidth: 14,
+                               backgroundColor: isDarkMode ? Colors.white10 : const Color(0xFFEBF3ED),
+                               valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFF59E0B)),
+                             ),
+                           ),
+                         ],
+                       ),
+                     ),
+                   ),
+                 ),
+                 const SizedBox(width: 16),
+                 // Legend
+                 Expanded(
+                   flex: 5,
+                   child: Column(
+                     crossAxisAlignment: CrossAxisAlignment.start,
+                     children: [
+                       _buildLegendItem(const Color(0xFF1E7431), 'Китобҳо ($_booksCount)', textColor),
+                       const SizedBox(height: 16),
+                       _buildLegendItem(const Color(0xFFA3E635), 'Тестҳо (${_attempts.length})', textColor),
+                       const SizedBox(height: 16),
+                       _buildLegendItem(const Color(0xFFF59E0B), 'Баҳо (${_averageScore.toStringAsFixed(0)}%)', textColor),
+                     ],
+                   ),
+                 ),
+               ],
+             ),
             const SizedBox(height: 32),
 
             // Attempt History Title
@@ -529,17 +525,23 @@ class _ReaderStatsScreenState extends State<ReaderStatsScreen> {
             else
               ..._attempts.map((attempt) {
                 final isPassed = attempt.percentage >= 50.0;
-                final scoreColor = isBw
-                    ? Colors.black
-                    : (isPassed ? Colors.teal : Colors.redAccent);
+                final cardColor = isDarkMode ? const Color(0xFF121212) : Colors.white;
+                final borderColor = isDarkMode ? textColor.withOpacity(0.1) : const Color(0xFF1E7431).withOpacity(0.15);
 
                 return Container(
                   margin: const EdgeInsets.only(bottom: 12),
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: isBw ? const Color(0xFFF5F5F5) : Colors.white.withOpacity(0.02),
+                    color: cardColor,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: isBw ? Colors.black12 : Colors.white.withOpacity(0.04)),
+                    border: Border.all(color: borderColor),
+                    boxShadow: isDarkMode ? [] : [
+                      BoxShadow(
+                        color: const Color(0xFF228B22).withOpacity(0.03),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -570,10 +572,10 @@ class _ReaderStatsScreenState extends State<ReaderStatsScreen> {
                         children: [
                           if (attempt.isGraded) ...[
                             Text(
-                              '${attempt.score}/${attempt.totalQuestions}',
+                              '${attempt.earnedPoints}/${attempt.totalPoints} хол',
                               style: TextStyle(
-                                color: scoreColor,
-                                fontSize: 18,
+                                color: textColor,
+                                fontSize: 16,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -581,22 +583,24 @@ class _ReaderStatsScreenState extends State<ReaderStatsScreen> {
                             Text(
                               '${attempt.percentage.toStringAsFixed(0)}%',
                               style: TextStyle(
-                                color: isBw ? Colors.black54 : scoreColor.withOpacity(0.8),
+                                color: textColor,
                                 fontSize: 14,
-                                fontWeight: FontWeight.bold,
+                                fontWeight: isPassed ? FontWeight.bold : FontWeight.normal,
+                                decoration: isPassed ? null : TextDecoration.lineThrough,
                               ),
                             ),
                           ] else ...[
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                color: isBw ? Colors.grey : Colors.amber.withOpacity(0.15),
+                                color: textColor.withOpacity(0.05),
                                 borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: textColor.withOpacity(0.2)),
                               ),
                               child: Text(
                                 'Дар ҳоли тафтиш',
                                 style: TextStyle(
-                                  color: isBw ? Colors.black : Colors.amber,
+                                  color: textColor,
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -610,76 +614,70 @@ class _ReaderStatsScreenState extends State<ReaderStatsScreen> {
                 );
               }),
             const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const LeaderboardScreen()),
-                );
-              },
-              icon: const Icon(Icons.emoji_events, color: Colors.white, size: 20),
-              label: const Text(
-                'Рейтинг (Топ 10 ва Топ 3)',
-                style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: isBw ? Colors.black : const Color(0xFF6B4FB3),
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const LeaderboardScreen()),
+                  );
+                },
+                icon: Icon(Icons.emoji_events_outlined, color: isDarkMode ? Colors.black : Colors.white, size: 20),
+                label: const Text(
+                  'Рейтинг (Топ 10 ва Топ 3)',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
-                elevation: 0,
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 32),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildCircleHeaderButton(IconData icon, bool isBw) {
+  Widget _buildCircleHeaderButton(IconData icon, bool isDarkMode, Color textColor) {
     return Container(
       width: 40,
       height: 40,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: isBw ? Colors.black12 : Colors.white.withOpacity(0.15)),
+        border: Border.all(color: textColor.withOpacity(0.2)),
       ),
       child: Center(
-        child: Icon(icon, color: isBw ? Colors.black87 : Colors.white70, size: 18),
+        child: Icon(icon, color: textColor, size: 18),
       ),
     );
   }
 
-  Widget _buildStreakDayName(String name, bool isBw) {
+  Widget _buildStreakDayName(String name, Color subTextColor) {
     return Text(
       name,
       style: TextStyle(
-        color: isBw ? Colors.black54 : Colors.white70,
+        color: subTextColor,
         fontSize: 12,
         fontWeight: FontWeight.w500,
       ),
     );
   }
 
-  Widget _buildStreakCircle(bool completed, String dayNum, bool isBw) {
-    final activeColor = isBw ? Colors.black : const Color(0xFF6B4FB3);
+  Widget _buildStreakCircle(bool completed, String dayNum, Color textColor, Color bgColor) {
     return Container(
       width: 34,
       height: 34,
       decoration: BoxDecoration(
-        color: completed
-            ? Colors.green
-            : (isBw ? Colors.white : Colors.white.withOpacity(0.9)),
+        color: completed ? textColor : bgColor,
         shape: BoxShape.circle,
+        border: Border.all(color: textColor.withOpacity(0.2)),
       ),
       child: Center(
         child: completed
-            ? const Icon(Icons.check, color: Colors.white, size: 18)
+            ? Icon(Icons.check, color: bgColor, size: 18)
             : Text(
                 dayNum,
                 style: TextStyle(
-                  color: completed ? Colors.white : activeColor.withOpacity(0.8),
+                  color: textColor.withOpacity(0.8),
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
                 ),
@@ -688,8 +686,19 @@ class _ReaderStatsScreenState extends State<ReaderStatsScreen> {
     );
   }
 
-  Widget _buildBar(double height, String day, bool isToday, bool isBw) {
-    final barColor = isBw ? Colors.black87 : const Color(0xFF6B4FB3);
+  Widget _buildBar(double height, String day, bool isToday, int index) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    Color barColor;
+    if (isDarkMode) {
+      barColor = isToday ? const Color(0xFF1E7431) : Colors.white24;
+    } else {
+      if (isToday) {
+        barColor = const Color(0xFF1E7431);
+      } else {
+        barColor = (index % 2 == 0) ? const Color(0xFFA3E635) : const Color(0xFFF59E0B);
+      }
+    }
+
     return Column(
       children: [
         Container(
@@ -705,8 +714,8 @@ class _ReaderStatsScreenState extends State<ReaderStatsScreen> {
           day,
           style: TextStyle(
             color: isToday
-                ? (isBw ? Colors.black : const Color(0xFF6B4FB3))
-                : (isBw ? Colors.black54 : Colors.grey),
+                ? (isDarkMode ? Colors.white : const Color(0xFF1E7431))
+                : (isDarkMode ? Colors.white54 : const Color(0xFF657367)),
             fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
             fontSize: 12,
           ),
@@ -715,20 +724,18 @@ class _ReaderStatsScreenState extends State<ReaderStatsScreen> {
     );
   }
 
-  Widget _buildFilterPill(String label, bool isSelected, bool isBw) {
-    final primaryColor = isBw ? Colors.black : const Color(0xFF6B4FB3);
+  Widget _buildFilterPill(String label, bool isSelected, Color textColor) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: isSelected
-            ? primaryColor.withOpacity(0.12)
-            : Colors.transparent,
+        color: isSelected ? textColor : Colors.transparent,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: textColor.withOpacity(0.1)),
       ),
       child: Text(
         label,
         style: TextStyle(
-          color: isSelected ? primaryColor : (isBw ? Colors.black54 : Colors.grey),
+          color: isSelected ? (Theme.of(context).brightness == Brightness.dark ? Colors.black : Colors.white) : textColor.withOpacity(0.6),
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           fontSize: 12,
         ),
@@ -736,19 +743,19 @@ class _ReaderStatsScreenState extends State<ReaderStatsScreen> {
     );
   }
 
-  Widget _buildLegendItem(Color color, String label, bool isBw) {
+  Widget _buildLegendItem(Color color, String label, Color textColor) {
     return Row(
       children: [
         Container(
           width: 14,
           height: 14,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle, border: Border.all(color: textColor.withOpacity(0.2))),
         ),
         const SizedBox(width: 8),
         Text(
           label,
           style: TextStyle(
-            color: isBw ? Colors.black87 : Colors.white,
+            color: textColor,
             fontSize: 13,
             fontWeight: FontWeight.bold,
           ),

@@ -100,26 +100,37 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
   }
 
   @override
-  @override
   Widget build(BuildContext context) {
-    final bodyWidget = Builder(builder: (context) {
-      if (_isLoading) {
-        return const Center(child: CircularProgressIndicator(color: Colors.deepPurpleAccent));
+    final theme = Theme.of(context);
+    final textColor = theme.colorScheme.onSurface;
+    final subTextColor = theme.colorScheme.onSurface.withOpacity(0.6);
+    final primaryColor = theme.colorScheme.primary;
+
+    if (_isLoading) {
+      if (!widget.showAppBar) {
+        return Center(child: CircularProgressIndicator(color: primaryColor));
       }
+      return Scaffold(
+        backgroundColor: theme.scaffoldBackgroundColor,
+        body: Center(child: CircularProgressIndicator(color: primaryColor)),
+      );
+    }
+
+    final bodyWidget = Builder(builder: (context) {
 
       if (_error != null) {
         return Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.error_outline, size: 60, color: Colors.redAccent.withOpacity(0.6)),
+              Icon(Icons.error_outline, size: 60, color: theme.colorScheme.error),
               const SizedBox(height: 16),
-              Text(_error!, style: TextStyle(color: Colors.white.withOpacity(0.6))),
+              Text(_error!, style: TextStyle(color: subTextColor)),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: _fetchOrders,
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.deepPurpleAccent),
-                child: const Text('Боз кӯшиш кунед', style: TextStyle(color: Colors.white)),
+                style: ElevatedButton.styleFrom(backgroundColor: primaryColor),
+                child: Text('Боз кӯшиш кунед', style: TextStyle(color: theme.colorScheme.onPrimary)),
               ),
             ],
           ),
@@ -131,11 +142,11 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.receipt_long_outlined, size: 80, color: Colors.white.withOpacity(0.2)),
+              Icon(Icons.receipt_long_outlined, size: 80, color: textColor.withOpacity(0.2)),
               const SizedBox(height: 20),
               Text(
                 'Шумо то ҳол ягон заявка надодаед',
-                style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16),
+                style: TextStyle(color: subTextColor, fontSize: 16),
               ),
             ],
           ),
@@ -144,7 +155,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
 
       return RefreshIndicator(
         onRefresh: _fetchOrders,
-        color: Colors.deepPurpleAccent,
+        color: primaryColor,
         child: ListView.builder(
           padding: const EdgeInsets.all(16),
           itemCount: _orders.length,
@@ -156,12 +167,23 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                 ? DateTime.tryParse(order['dateCreated'])
                 : null;
 
+            final isDarkMode = theme.brightness == Brightness.dark;
+            final cardColor = isDarkMode ? theme.cardColor : Colors.white;
+            final borderColor = isDarkMode ? theme.dividerColor : const Color(0xFF1E7431).withOpacity(0.15);
+
             return Container(
               margin: const EdgeInsets.only(bottom: 16),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.03),
+                color: cardColor,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withOpacity(0.06)),
+                border: Border.all(color: borderColor),
+                boxShadow: isDarkMode ? [] : [
+                  BoxShadow(
+                    color: const Color(0xFF228B22).withOpacity(0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -173,12 +195,12 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.receipt_outlined, color: Colors.white54, size: 18),
+                            Icon(Icons.receipt_outlined, color: subTextColor, size: 18),
                             const SizedBox(width: 8),
                             Text(
                               'Заявка #${order['id']}',
-                              style: const TextStyle(
-                                color: Colors.white,
+                              style: TextStyle(
+                                color: textColor,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 15,
                               ),
@@ -211,7 +233,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                     ),
                   ),
 
-                  const Divider(height: 1, thickness: 1, color: Color(0xFF1E1A35)),
+                  Divider(height: 1, thickness: 1, color: isDarkMode ? theme.dividerColor : const Color(0xFFE5EFE7)),
 
                   if (items.isNotEmpty)
                     ...items.map((item) {
@@ -221,18 +243,18 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                           width: 36,
                           height: 36,
                           decoration: BoxDecoration(
-                            color: Colors.deepPurpleAccent.withOpacity(0.1),
+                            color: isDarkMode ? primaryColor.withOpacity(0.1) : const Color(0xFFEBF3ED),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: const Icon(Icons.book_outlined, color: Colors.deepPurpleAccent, size: 18),
+                          child: Icon(Icons.book_outlined, color: isDarkMode ? primaryColor : const Color(0xFF1E7431), size: 18),
                         ),
                         title: Text(
                           item['bookTitle'] ?? (item['book'] != null ? item['book']['title'] : 'Китоб'),
-                          style: const TextStyle(color: Colors.white, fontSize: 14),
+                          style: TextStyle(color: textColor, fontSize: 14),
                         ),
                         trailing: Text(
                           '${item['quantity'] ?? 1} дона',
-                          style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13),
+                          style: TextStyle(color: subTextColor, fontSize: 13),
                         ),
                       );
                     }),
@@ -245,14 +267,14 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                         if (date != null)
                           Text(
                             '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}',
-                            style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12),
+                            style: TextStyle(color: textColor.withOpacity(0.4), fontSize: 12),
                           ),
                         Text(
-                          'Ҷамъ: ${order['totalPrice'] ?? 0} TJS',
-                          style: const TextStyle(
-                            color: Colors.deepPurpleAccent,
+                          'Ҷамъ: ${order['totalAmount'] ?? order['totalPrice'] ?? 0} TJS',
+                          style: TextStyle(
+                            color: isDarkMode ? primaryColor : const Color(0xFF1E7431),
                             fontWeight: FontWeight.bold,
-                            fontSize: 14,
+                            fontSize: 15,
                           ),
                         ),
                       ],
@@ -271,15 +293,15 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F0C20),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF15102A),
+        backgroundColor: theme.appBarTheme.backgroundColor,
         elevation: 0,
-        title: const Text('Заявкаҳои ман', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        iconTheme: const IconThemeData(color: Colors.white),
+        title: Text('Заявкаҳои ман', style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
+        iconTheme: IconThemeData(color: textColor),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white70),
+            icon: Icon(Icons.refresh, color: textColor.withOpacity(0.7)),
             onPressed: _fetchOrders,
           ),
         ],

@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../models/test_model.dart';
 import '../../services/api_service.dart';
+import '../../providers/theme_provider.dart';
 import 'test_quiz.dart';
 
 class ReaderTestsScreen extends StatefulWidget {
@@ -17,8 +19,6 @@ class _ReaderTestsScreenState extends State<ReaderTestsScreen> with SingleTicker
   List<TestAttemptModel> _attempts = [];
   bool _isLoading = true;
 
-  // Retry logic
-  int _retryCount = 0;
   static const int _maxRetries = 3;
   static const Duration _retryDelay = Duration(seconds: 1);
 
@@ -58,7 +58,6 @@ class _ReaderTestsScreenState extends State<ReaderTestsScreen> with SingleTicker
             _tests = testsJson.map((t) => TestModel.fromJson(t)).toList();
             _attempts = attemptsJson.map((a) => TestAttemptModel.fromJson(a)).toList();
             _isLoading = false;
-            _retryCount = 0;
           });
           return;
         } else {
@@ -86,15 +85,17 @@ class _ReaderTestsScreenState extends State<ReaderTestsScreen> with SingleTicker
     }
   }
 
-  Widget _buildTestsList() {
+  Widget _buildTestsList(Color textColor, bool isDarkMode) {
     if (_tests.isEmpty) {
       return Center(
         child: Text(
           'Тестҳо айни замон дастрас нестанд',
-          style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 16),
+          style: TextStyle(color: textColor.withOpacity(0.6), fontSize: 16),
         ),
       );
     }
+
+    final cardColor = Theme.of(context).cardColor;
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
@@ -105,17 +106,24 @@ class _ReaderTestsScreenState extends State<ReaderTestsScreen> with SingleTicker
           margin: const EdgeInsets.only(bottom: 16),
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.03),
+            color: cardColor,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white.withOpacity(0.05)),
+            border: Border.all(color: isDarkMode ? Colors.white.withOpacity(0.08) : const Color(0xFFD1E2D5)),
+            boxShadow: isDarkMode ? [] : [
+              BoxShadow(
+                color: const Color(0xFF228B22).withOpacity(0.04),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 test.title,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: textColor,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -124,7 +132,7 @@ class _ReaderTestsScreenState extends State<ReaderTestsScreen> with SingleTicker
                 const SizedBox(height: 8),
                 Text(
                   test.description!,
-                  style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 14),
+                  style: TextStyle(color: textColor.withOpacity(0.6), fontSize: 14),
                 ),
               ],
               const SizedBox(height: 16),
@@ -133,11 +141,11 @@ class _ReaderTestsScreenState extends State<ReaderTestsScreen> with SingleTicker
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.help_outline, color: Colors.deepPurpleAccent, size: 20),
+                      Icon(Icons.help_outline, color: textColor.withOpacity(0.7), size: 20),
                       const SizedBox(width: 6),
                       Text(
                         '${test.questionCount} савол',
-                        style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 14),
+                        style: TextStyle(color: textColor.withOpacity(0.8), fontSize: 14),
                       ),
                     ],
                   ),
@@ -150,13 +158,9 @@ class _ReaderTestsScreenState extends State<ReaderTestsScreen> with SingleTicker
                       ).then((_) => _fetchTestData());
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.deepPurpleAccent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                     ),
-                    child: const Text('Сар кардан', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    child: const Text('Сар кардан', style: TextStyle(fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),
@@ -167,15 +171,17 @@ class _ReaderTestsScreenState extends State<ReaderTestsScreen> with SingleTicker
     );
   }
 
-  Widget _buildAttemptsList() {
+  Widget _buildAttemptsList(Color textColor, bool isDarkMode) {
     if (_attempts.isEmpty) {
       return Center(
         child: Text(
           'Шумо то ҳол ягон тест насупоридаед',
-          style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 16),
+          style: TextStyle(color: textColor.withOpacity(0.6), fontSize: 16),
         ),
       );
     }
+
+    final cardColor = Theme.of(context).cardColor;
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
@@ -183,15 +189,21 @@ class _ReaderTestsScreenState extends State<ReaderTestsScreen> with SingleTicker
       itemBuilder: (context, index) {
         final attempt = _attempts[index];
         final isPassed = attempt.percentage >= 50.0;
-        final scoreColor = isPassed ? Colors.teal : Colors.redAccent;
 
         return Container(
           margin: const EdgeInsets.only(bottom: 16),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.02),
+            color: cardColor,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withOpacity(0.04)),
+            border: Border.all(color: isDarkMode ? Colors.white.withOpacity(0.08) : const Color(0xFFD1E2D5)),
+            boxShadow: isDarkMode ? [] : [
+              BoxShadow(
+                color: const Color(0xFF228B22).withOpacity(0.04),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -202,8 +214,8 @@ class _ReaderTestsScreenState extends State<ReaderTestsScreen> with SingleTicker
                   children: [
                     Text(
                       attempt.testTitle,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: textColor,
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
@@ -211,7 +223,7 @@ class _ReaderTestsScreenState extends State<ReaderTestsScreen> with SingleTicker
                     const SizedBox(height: 6),
                     Text(
                       'Сана: ${attempt.dateCreatedTajik}',
-                      style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12),
+                      style: TextStyle(color: textColor.withOpacity(0.4), fontSize: 12),
                     ),
                   ],
                 ),
@@ -223,7 +235,7 @@ class _ReaderTestsScreenState extends State<ReaderTestsScreen> with SingleTicker
                   Text(
                     '${attempt.score}/${attempt.totalQuestions}',
                     style: TextStyle(
-                      color: scoreColor,
+                      color: textColor,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
@@ -232,9 +244,9 @@ class _ReaderTestsScreenState extends State<ReaderTestsScreen> with SingleTicker
                   Text(
                     '${attempt.percentage.toStringAsFixed(0)}%',
                     style: TextStyle(
-                      color: scoreColor.withOpacity(0.8),
+                      color: textColor.withOpacity(0.8),
                       fontSize: 14,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: isPassed ? FontWeight.bold : FontWeight.normal,
                     ),
                   ),
                 ],
@@ -248,8 +260,11 @@ class _ReaderTestsScreenState extends State<ReaderTestsScreen> with SingleTicker
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
+    final textColor = isDarkMode ? Colors.white : Colors.black;
+
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator(color: Colors.deepPurpleAccent));
+      return Center(child: CircularProgressIndicator(color: textColor));
     }
 
     return Column(
@@ -257,9 +272,9 @@ class _ReaderTestsScreenState extends State<ReaderTestsScreen> with SingleTicker
         // TabBar headers
         TabBar(
           controller: _tabController,
-          indicatorColor: Colors.deepPurpleAccent,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white.withOpacity(0.4),
+          indicatorColor: textColor,
+          labelColor: textColor,
+          unselectedLabelColor: textColor.withOpacity(0.4),
           tabs: const [
             Tab(text: 'Тестҳои фаъол'),
             Tab(text: 'Натиҷаҳо'),
@@ -272,13 +287,13 @@ class _ReaderTestsScreenState extends State<ReaderTestsScreen> with SingleTicker
             children: [
               RefreshIndicator(
                 onRefresh: _fetchTestData,
-                color: Colors.deepPurpleAccent,
-                child: _buildTestsList(),
+                color: textColor,
+                child: _buildTestsList(textColor, isDarkMode),
               ),
               RefreshIndicator(
                 onRefresh: _fetchTestData,
-                color: Colors.deepPurpleAccent,
-                child: _buildAttemptsList(),
+                color: textColor,
+                child: _buildAttemptsList(textColor, isDarkMode),
               ),
             ],
           ),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/api_service.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/theme_provider.dart';
 import '../login_screen.dart';
 import '../notifications_feed.dart';
 
@@ -80,7 +81,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> with Sing
         _fetchChildren();
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Кӯдак бомуваффақият пайваст карда шуд.'), backgroundColor: Colors.teal),
+          const SnackBar(content: Text('Кӯдак бомуваффақият пайваст карда шуд.'), backgroundColor: Colors.black),
         );
       } else {
         final err = jsonDecode(response.body);
@@ -104,36 +105,43 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> with Sing
   }
 
   void _showLinkChildDialog() {
+    final isDarkMode = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
+    final textColor = isDarkMode ? Colors.white : Colors.black;
+    final backgroundColor = isDarkMode ? Colors.black : Colors.white;
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E173E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Пайваст кардани кӯдак', style: TextStyle(color: Colors.white)),
+        backgroundColor: backgroundColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: textColor.withOpacity(0.1)),
+        ),
+        title: Text('Пайваст кардани кӯдак', style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
+            Text(
               'Почтаи электронии (email) кӯдаки худро, ки ҳамчун Хонанда ба қайд гирифта шудааст, ворид кунед:',
-              style: TextStyle(color: Colors.white70, fontSize: 14),
+              style: TextStyle(color: textColor.withOpacity(0.7), fontSize: 14),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: _emailController,
               keyboardType: TextInputType.emailAddress,
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: textColor),
               decoration: InputDecoration(
                 hintText: 'Email-и хонанда',
-                hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
+                hintStyle: TextStyle(color: textColor.withOpacity(0.4)),
                 filled: true,
-                fillColor: Colors.white.withOpacity(0.05),
+                fillColor: textColor.withOpacity(0.05),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                  borderSide: BorderSide(color: textColor.withOpacity(0.1)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.deepPurpleAccent, width: 2),
+                  borderSide: BorderSide(color: textColor, width: 2),
                 ),
               ),
             ),
@@ -142,12 +150,11 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> with Sing
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Бекор кардан', style: TextStyle(color: Colors.white54)),
+            child: Text('Бекор кардан', style: TextStyle(color: textColor.withOpacity(0.6))),
           ),
           ElevatedButton(
             onPressed: _linkChild,
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.deepPurpleAccent),
-            child: const Text('Пайваст кардан', style: TextStyle(color: Colors.white)),
+            child: const Text('Пайваст кардан'),
           ),
         ],
       ),
@@ -155,9 +162,13 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> with Sing
   }
 
   void _showChildStats(int childId, String childName) async {
+    final isDarkMode = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
+    final textColor = isDarkMode ? Colors.white : Colors.black;
+    final backgroundColor = isDarkMode ? Colors.black : Colors.white;
+
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF15102A),
+      backgroundColor: backgroundColor,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.only(
@@ -176,10 +187,10 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> with Sing
               future: ApiService.get('/api/parent/child/$childId/statistics'),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator(color: Colors.deepPurpleAccent));
+                  return Center(child: CircularProgressIndicator(color: textColor));
                 }
                 if (snapshot.hasError || snapshot.data?.statusCode != 200) {
-                  return const Center(child: Text('Хатогӣ дар боркунии омор', style: TextStyle(color: Colors.white)));
+                  return Center(child: Text('Хатогӣ дар боркунии омор', style: TextStyle(color: textColor)));
                 }
 
                 final stats = jsonDecode(snapshot.data!.body);
@@ -193,13 +204,13 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> with Sing
                       child: Container(
                         width: 40,
                         height: 4,
-                        decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+                        decoration: BoxDecoration(color: textColor.withOpacity(0.2), borderRadius: BorderRadius.circular(2)),
                       ),
                     ),
                     const SizedBox(height: 24),
                     Text(
                       'Омори пешрафти $childName',
-                      style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: textColor, fontSize: 22, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 24),
 
@@ -211,7 +222,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> with Sing
                             'Китобҳои хондашуда',
                             '${stats['booksReadCount']}',
                             Icons.menu_book,
-                            Colors.teal,
+                            textColor,
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -220,16 +231,16 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> with Sing
                             'Холҳои миёна',
                             '${stats['averageScorePercentage']}%',
                             Icons.analytics,
-                            Colors.deepPurpleAccent,
+                            textColor,
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 24),
 
-                    const Text(
+                    Text(
                       'Таърихи супоридани тестҳо',
-                      style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 12),
 
@@ -239,7 +250,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> with Sing
                         child: Center(
                           child: Text(
                             'То ҳол тестҳо супорида нашудаанд',
-                            style: TextStyle(color: Colors.white.withOpacity(0.5)),
+                            style: TextStyle(color: textColor.withOpacity(0.5)),
                           ),
                         ),
                       )
@@ -252,9 +263,9 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> with Sing
                           margin: const EdgeInsets.only(bottom: 12),
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.03),
+                            color: textColor.withOpacity(0.03),
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: Colors.white.withOpacity(0.05)),
+                            border: Border.all(color: textColor.withOpacity(0.1)),
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -265,18 +276,18 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> with Sing
                                   children: [
                                     Text(
                                       a['testTitle'],
-                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                      style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
                                     ),
                                     const SizedBox(height: 4),
                                     if (isGraded)
                                       Text(
                                         'Хол: ${a['score']}/${a['totalQuestions']}',
-                                        style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13),
+                                        style: TextStyle(color: textColor.withOpacity(0.6), fontSize: 13),
                                       )
                                     else
                                       Text(
                                         'Ҷавобҳо қабул шуданд',
-                                        style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 13, fontStyle: FontStyle.italic),
+                                        style: TextStyle(color: textColor.withOpacity(0.4), fontSize: 13, fontStyle: FontStyle.italic),
                                       ),
                                   ],
                                 ),
@@ -285,7 +296,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> with Sing
                                 Text(
                                   '${percent.toStringAsFixed(0)}%',
                                   style: TextStyle(
-                                    color: isPassed ? Colors.teal : Colors.redAccent,
+                                    color: isPassed ? Colors.green : Colors.redAccent,
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -294,7 +305,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> with Sing
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: Colors.amber.withOpacity(0.15),
+                                    color: textColor.withOpacity(0.1),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: const Text(
@@ -324,9 +335,9 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> with Sing
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.03),
+        color: color.withOpacity(0.03),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        border: Border.all(color: color.withOpacity(0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -335,12 +346,12 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> with Sing
           const SizedBox(height: 16),
           Text(
             value,
-            style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+            style: TextStyle(color: color, fontSize: 24, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 4),
           Text(
             label,
-            style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+            style: TextStyle(color: color.withOpacity(0.5), fontSize: 12),
           ),
         ],
       ),
@@ -348,8 +359,11 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> with Sing
   }
 
   Widget _buildChildrenList() {
+    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
+    final textColor = isDarkMode ? Colors.white : Colors.black;
+
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator(color: Colors.deepPurpleAccent));
+      return Center(child: CircularProgressIndicator(color: textColor));
     }
 
     if (_children.isEmpty) {
@@ -357,18 +371,17 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> with Sing
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.child_care, size: 64, color: Colors.white.withOpacity(0.3)),
+            Icon(Icons.child_care, size: 64, color: textColor.withOpacity(0.3)),
             const SizedBox(height: 16),
             Text(
               'Ҳеҷ кӯдак пайваст карда нашудааст',
-              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16),
+              style: TextStyle(color: textColor.withOpacity(0.5), fontSize: 16),
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: _showLinkChildDialog,
-              icon: const Icon(Icons.add, color: Colors.white),
-              label: const Text('Пайваст кардани кӯдак', style: TextStyle(color: Colors.white)),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.deepPurpleAccent),
+              icon: Icon(Icons.add, color: isDarkMode ? Colors.black : Colors.white),
+              label: const Text('Пайваст кардани кӯдак'),
             ),
           ],
         ),
@@ -390,9 +403,9 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> with Sing
               margin: const EdgeInsets.only(bottom: 16),
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.03),
+                color: textColor.withOpacity(0.03),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withOpacity(0.05)),
+                border: Border.all(color: textColor.withOpacity(0.1)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -403,8 +416,8 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> with Sing
                       Row(
                         children: [
                           CircleAvatar(
-                            backgroundColor: Colors.deepPurpleAccent.withOpacity(0.15),
-                            child: const Icon(Icons.person, color: Colors.deepPurpleAccent),
+                            backgroundColor: textColor.withOpacity(0.1),
+                            child: Icon(Icons.person, color: textColor),
                           ),
                           const SizedBox(width: 12),
                           Column(
@@ -412,27 +425,27 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> with Sing
                             children: [
                               Text(
                                 child['name'],
-                                style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                                style: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.bold),
                               ),
                               Text(
                                 child['email'],
-                                style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 13),
+                                style: TextStyle(color: textColor.withOpacity(0.4), fontSize: 13),
                               ),
                             ],
                           ),
                         ],
                       ),
-                      const Icon(Icons.arrow_forward_ios, color: Colors.white30, size: 16),
+                      Icon(Icons.arrow_forward_ios, color: textColor.withOpacity(0.3), size: 16),
                     ],
                   ),
                   const Divider(height: 32, thickness: 1),
                   Text(
                     'Китобҳои дастрасшуда (${books.length}):',
-                    style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 14, fontWeight: FontWeight.bold),
+                    style: TextStyle(color: textColor.withOpacity(0.6), fontSize: 14, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
                   books.isEmpty
-                      ? Text('Ҳеҷ китоб дастрас нест.', style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 13))
+                      ? Text('Ҳеҷ китоб дастрас нест.', style: TextStyle(color: textColor.withOpacity(0.3), fontSize: 13))
                       : Wrap(
                           spacing: 8,
                           runSpacing: 8,
@@ -440,12 +453,13 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> with Sing
                             return Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.05),
+                                color: textColor.withOpacity(0.05),
                                 borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: textColor.withOpacity(0.1)),
                               ),
                               child: Text(
                                 b['title'],
-                                style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                style: TextStyle(color: textColor.withOpacity(0.8), fontSize: 12),
                               ),
                             );
                           }).toList(),
@@ -458,8 +472,8 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> with Sing
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showLinkChildDialog,
-        backgroundColor: Colors.deepPurpleAccent,
-        child: const Icon(Icons.add, color: Colors.white),
+        backgroundColor: textColor,
+        child: Icon(Icons.add, color: isDarkMode ? Colors.black : Colors.white),
       ),
     );
   }
@@ -476,22 +490,34 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> with Sing
   Widget build(BuildContext context) {
     final parent = Provider.of<AuthProvider>(context).currentUser;
     final parentName = parent?.name ?? 'Волидайн';
+    final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
+    final textColor = isDarkMode ? Colors.white : Colors.black;
+    final theme = Theme.of(context);
+
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: theme.scaffoldBackgroundColor,
+        body: Center(
+          child: CircularProgressIndicator(color: textColor),
+        ),
+      );
+    }
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F0C20),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF15102A),
+        backgroundColor: theme.appBarTheme.backgroundColor,
         elevation: 0,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               parentName,
-              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.bold),
             ),
             Text(
               'Панели назорати волидайн',
-              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+              style: TextStyle(color: textColor.withOpacity(0.5), fontSize: 12),
             ),
           ],
         ),
@@ -503,9 +529,9 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> with Sing
         ],
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: Colors.deepPurpleAccent,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white.withOpacity(0.4),
+          indicatorColor: textColor,
+          labelColor: textColor,
+          unselectedLabelColor: textColor.withOpacity(0.4),
           tabs: const [
             Tab(text: 'Кӯдакони ман'),
             Tab(text: 'Паёмҳо'),

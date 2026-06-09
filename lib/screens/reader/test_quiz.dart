@@ -2,8 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:provider/provider.dart';
 import '../../models/test_model.dart';
 import '../../services/api_service.dart';
+import '../../providers/theme_provider.dart';
 
 class TestQuizScreen extends StatefulWidget {
   final int testId;
@@ -18,6 +21,7 @@ class TestQuizScreen extends StatefulWidget {
 class _TestQuizScreenState extends State<TestQuizScreen> {
   TestModel? _test;
   bool _isLoading = true;
+  Map<String, dynamic>? _submissionResult;
   int _currentQuestionIndex = 0;
 
   // Timers and states
@@ -64,25 +68,32 @@ class _TestQuizScreenState extends State<TestQuizScreen> {
   }
 
   void _handleTimeOut() {
+    final isDarkMode = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
+    final textColor = isDarkMode ? Colors.white : Colors.black;
+    final backgroundColor = isDarkMode ? Colors.black : Colors.white;
+
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E173E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Row(
+        backgroundColor: backgroundColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: BorderSide(color: textColor.withOpacity(0.1)),
+        ),
+        title: Row(
           children: [
-            Icon(Icons.timer_off_outlined, color: Colors.redAccent, size: 28),
-            SizedBox(width: 10),
+            Icon(Icons.timer_off_outlined, color: textColor, size: 28),
+            const SizedBox(width: 10),
             Text(
               'Вақт тамом шуд',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+              style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 18),
             ),
           ],
         ),
-        content: const Text(
+        content: Text(
           'Вақти ҷудошуда барои супоридани санҷиш ба охир расид. Ҷавобҳои шумо ба таври худкор фиристода мешаванд.',
-          style: TextStyle(color: Colors.white70, fontSize: 14, height: 1.4),
+          style: TextStyle(color: textColor.withOpacity(0.7), fontSize: 14, height: 1.4),
         ),
         actions: [
           TextButton(
@@ -90,7 +101,7 @@ class _TestQuizScreenState extends State<TestQuizScreen> {
               Navigator.of(ctx).pop();
               _submitTest();
             },
-            child: const Text('Фаҳмо', style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold)),
+            child: Text('Фаҳмо', style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -185,13 +196,10 @@ class _TestQuizScreenState extends State<TestQuizScreen> {
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
-        final int score = result['score'] ?? 0;
-        final int earnedPoints = result['earnedPoints'] ?? 0;
-        final int totalPoints = result['totalPoints'] ?? 0;
-        final int optionEarnedPoints = result['optionEarnedPoints'] ?? earnedPoints;
-        final int optionTotalPoints = result['optionTotalPoints'] ?? totalPoints;
-        final bool isGraded = result['isGraded'] ?? true;
-        _showResultDialog(score, earnedPoints, totalPoints, isGraded, optionEarnedPoints, optionTotalPoints);
+        setState(() {
+          _submissionResult = result;
+          _isLoading = false;
+        });
       } else {
         setState(() => _isLoading = false);
         _startTimer();
@@ -208,90 +216,115 @@ class _TestQuizScreenState extends State<TestQuizScreen> {
     }
   }
 
-  void _showResultDialog(int score, int earnedPoints, int totalPoints, bool isGraded, int optionEarnedPoints, int optionTotalPoints) {
+  Widget _buildSuccessScreen(ThemeData theme, Color textColor, Color backgroundColor, bool isDarkMode) {
+    final result = _submissionResult!;
+    final int score = result['score'] ?? 0;
+    final int earnedPoints = result['earnedPoints'] ?? 0;
+    final int totalPoints = result['totalPoints'] ?? 0;
+    final int optionEarnedPoints = result['optionEarnedPoints'] ?? earnedPoints;
+    final int optionTotalPoints = result['optionTotalPoints'] ?? totalPoints;
+    final bool isGraded = result['isGraded'] ?? true;
     final double percentage = totalPoints > 0 ? (earnedPoints * 100) / totalPoints : 0;
     final isPassed = percentage >= 50.0;
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E173E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: Center(
-          child: Icon(
-            isGraded
-                ? (isPassed ? Icons.check_circle : Icons.error)
-                : Icons.pending_actions,
-            color: isGraded
-                ? (isPassed ? Colors.teal : Colors.redAccent)
-                : Colors.amber,
-            size: 64,
-          ),
+    String titleText = isGraded 
+        ? (isPassed ? 'Санҷиш супорида шуд' : 'Санҷиш ноком шуд')
+        : 'Ҷавобҳо қабул шуданд';
+        
+    String description = '';
+    if (isGraded) {
+      description = 'Холҳои гирифташуда: $earnedPoints аз $totalPoints (${percentage.toStringAsFixed(1)}%)\n\n' +
+          (isPassed 
+              ? 'Офарин! Шумо санҷишро бомуваффақият супоридед.'
+              : 'Мутаассифона, холҳои шумо барои гузаштан кам аст. Боз кӯшиш кунед.');
+    } else {
+      description = 'Холҳои саволҳои вариантӣ: $optionEarnedPoints аз $optionTotalPoints\n\n'
+          'Ҷавобҳои шумо бомуваффақият қабул шуданд. Муаллим холҳои саволҳои пӯшида (хаттӣ)-ро дертар месанҷад.';
+    }
+
+    final accentColor = theme.colorScheme.primary;
+
+    return Scaffold(
+      backgroundColor: backgroundColor,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        centerTitle: true,
+        title: const Text(
+          'Оформлено',
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              isGraded ? 'Натиҷаи Санҷиш' : 'Тест Қабул Шуд',
-              style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            if (isGraded) ...[
-              Text(
-                'Холҳои гирифташуда: $earnedPoints аз $totalPoints',
-                style: const TextStyle(color: Colors.white70, fontSize: 16),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '${percentage.toStringAsFixed(1)}%',
-                style: TextStyle(
-                  color: isPassed ? Colors.teal : Colors.redAccent,
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
+        automaticallyImplyLeading: false,
+      ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+          child: Column(
+            children: [
+              const Spacer(),
+              // Light lavender circle with purple checkmark (matching image 3)
+              Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  color: isDarkMode ? accentColor.withOpacity(0.15) : const Color(0xFFEEECFC),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Icon(
+                    isGraded && !isPassed ? Icons.close_rounded : Icons.check_rounded,
+                    color: isGraded && !isPassed ? Colors.redAccent : accentColor,
+                    size: 64,
+                  ),
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 36),
+              // Success bold title
               Text(
-                isPassed
-                    ? 'Офарин! Шумо санҷишро бомуваффақият супоридед.'
-                    : 'Мутаассифона, холҳои шумо кам аст. Боз кӯшиш кунед.',
+                titleText,
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 14),
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: -0.5,
+                ),
               ),
-            ] else ...[
-              const SizedBox(height: 8),
-              Text(
-                'Холҳои саволҳои вариантии санҷидашуда:\n$optionEarnedPoints аз $optionTotalPoints',
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.tealAccent, fontSize: 16, fontWeight: FontWeight.bold),
+              const SizedBox(height: 16),
+              // Description body text
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                child: Text(
+                  description,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: textColor.withOpacity(0.6),
+                    fontSize: 15,
+                    height: 1.6,
+                  ),
+                ),
               ),
-              const SizedBox(height: 12),
-              Text(
-                'Ҷавобҳои шумо қабул шуданд.\nХолҳои саволҳои пӯшида (хаттӣ) дар охир аз тарафи муаллим гузошта мешаванд.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 14, height: 1.6),
+              const Spacer(flex: 2),
+              // Return home button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text(
+                    'Ба саҳифаи асосӣ',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
               ),
             ],
-          ],
-        ),
-        actions: [
-          Center(
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.of(ctx).pop();
-                Navigator.of(context).pop();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.deepPurpleAccent,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-              ),
-              child: const Text('Фаҳмо', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            ),
           ),
-          const SizedBox(height: 8),
-        ],
+        ),
       ),
     );
   }
@@ -341,7 +374,24 @@ class _TestQuizScreenState extends State<TestQuizScreen> {
     required bool isSelected,
     required bool isMultiple,
     required VoidCallback onTap,
+    required Color textColor,
+    required Color backgroundColor,
   }) {
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+
+    final cardBgColor = isDarkMode
+        ? (isSelected ? theme.colorScheme.primary.withOpacity(0.15) : theme.cardColor)
+        : (isSelected ? const Color(0xFFEBF3ED) : Colors.white);
+
+    final borderColor = isDarkMode
+        ? (isSelected ? theme.colorScheme.primary : textColor.withOpacity(0.1))
+        : (isSelected ? const Color(0xFF1E7431) : const Color(0xFFD1E2D5));
+
+    final optionTextColor = isDarkMode
+        ? textColor
+        : (isSelected ? const Color(0xFF1E7431) : const Color(0xFF1A1F1C));
+
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -349,21 +399,19 @@ class _TestQuizScreenState extends State<TestQuizScreen> {
         margin: const EdgeInsets.only(bottom: 14),
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFEDE7F6) : Colors.white,
+          color: cardBgColor,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected ? Colors.deepPurple : Colors.grey[200]!,
-            width: isSelected ? 2 : 1.5,
+            color: borderColor,
+            width: isSelected ? 2.0 : 1.5,
           ),
-          boxShadow: isSelected
-              ? []
-              : [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.02),
-                    blurRadius: 6,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
+          boxShadow: isDarkMode ? [] : [
+            BoxShadow(
+              color: const Color(0xFF228B22).withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Row(
           children: [
@@ -372,27 +420,31 @@ class _TestQuizScreenState extends State<TestQuizScreen> {
               width: 28,
               height: 28,
               decoration: BoxDecoration(
-                color: isSelected ? Colors.deepPurple : Colors.transparent,
+                color: isSelected
+                    ? (isDarkMode ? theme.colorScheme.primary : const Color(0xFF1E7431))
+                    : Colors.transparent,
                 shape: isMultiple ? BoxShape.rectangle : BoxShape.circle,
                 borderRadius: isMultiple ? BorderRadius.circular(6) : null,
                 border: Border.all(
-                  color: isSelected ? Colors.deepPurple : Colors.grey[400]!,
+                  color: isSelected
+                      ? (isDarkMode ? theme.colorScheme.primary : const Color(0xFF1E7431))
+                      : (isDarkMode ? textColor.withOpacity(0.4) : const Color(0xFF8A9A8E)),
                   width: 1.8,
                 ),
               ),
               child: Center(
                 child: isSelected
-                    ? Icon(
-                        isMultiple ? Icons.check : Icons.circle,
+                    ? const Icon(
+                        Icons.check,
                         color: Colors.white,
-                        size: isMultiple ? 16 : 10,
+                        size: 16,
                       )
                     : Text(
                         key,
                         style: TextStyle(
-                          color: Colors.grey[600],
+                          color: isDarkMode ? textColor.withOpacity(0.8) : const Color(0xFF657367),
                           fontWeight: FontWeight.bold,
-                          fontSize: 13,
+                          fontSize: 14,
                         ),
                       ),
               ),
@@ -402,7 +454,7 @@ class _TestQuizScreenState extends State<TestQuizScreen> {
               child: Text(
                 text,
                 style: TextStyle(
-                  color: const Color(0xFF1E1C24),
+                  color: optionTextColor,
                   fontSize: 16,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                 ),
@@ -414,7 +466,7 @@ class _TestQuizScreenState extends State<TestQuizScreen> {
     );
   }
 
-  Widget _buildClosedAnswer(QuestionModel q) {
+  Widget _buildClosedAnswer(QuestionModel q, Color textColor, Color backgroundColor) {
     final isUploading = _uploadingStates[q.id] ?? false;
     final fileName = _uploadedFileNames[q.id];
     final fileUrl = _closedAnswers[q.id];
@@ -427,17 +479,17 @@ class _TestQuizScreenState extends State<TestQuizScreen> {
             Container(
               padding: const EdgeInsets.symmetric(vertical: 30),
               decoration: BoxDecoration(
-                color: Colors.grey[50],
+                color: textColor.withOpacity(0.05),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.grey[200]!, width: 1.5),
+                border: Border.all(color: textColor.withOpacity(0.1), width: 1.5),
               ),
-              child: const Column(
+              child: Column(
                 children: [
-                  CircularProgressIndicator(color: Colors.deepPurple),
-                  SizedBox(height: 12),
+                  CircularProgressIndicator(color: textColor),
+                  const SizedBox(height: 12),
                   Text(
                     'Файл боргузорӣ шуда истодааст...',
-                    style: TextStyle(color: Colors.black54, fontSize: 14, fontWeight: FontWeight.w500),
+                    style: TextStyle(color: textColor.withOpacity(0.6), fontSize: 14, fontWeight: FontWeight.w500),
                   ),
                 ],
               ),
@@ -448,21 +500,21 @@ class _TestQuizScreenState extends State<TestQuizScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 16),
                 decoration: BoxDecoration(
-                  color: Colors.grey[50],
+                  color: textColor.withOpacity(0.03),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: Colors.deepPurple.withOpacity(0.3),
+                    color: textColor.withOpacity(0.2),
                     width: 1.5,
                   ),
                 ),
                 child: Column(
                   children: [
-                    Icon(Icons.cloud_upload_outlined, color: Colors.deepPurple[400], size: 48),
+                    Icon(Icons.cloud_upload_outlined, color: textColor.withOpacity(0.5), size: 48),
                     const SizedBox(height: 12),
-                    const Text(
+                    Text(
                       'Илова кардани файл',
                       style: TextStyle(
-                        color: Colors.deepPurple,
+                        color: textColor,
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
@@ -472,7 +524,7 @@ class _TestQuizScreenState extends State<TestQuizScreen> {
                       'Шумо метавонед расм ё ҳуҷҷатро аз телефони худ боргузорӣ кунед',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: Colors.grey[500],
+                        color: textColor.withOpacity(0.5),
                         fontSize: 12,
                       ),
                     ),
@@ -485,13 +537,13 @@ class _TestQuizScreenState extends State<TestQuizScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: const Color(0xFFE8F5E9),
+              color: textColor.withOpacity(0.05),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFA5D6A7), width: 1.5),
+              border: Border.all(color: textColor.withOpacity(0.2), width: 1.5),
             ),
             child: Row(
               children: [
-                const Icon(Icons.insert_drive_file_outlined, color: Colors.green, size: 28),
+                Icon(Icons.insert_drive_file_outlined, color: textColor, size: 28),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -499,8 +551,8 @@ class _TestQuizScreenState extends State<TestQuizScreen> {
                     children: [
                       Text(
                         fileName ?? 'Файли боргузоришуда',
-                        style: const TextStyle(
-                          color: Color(0xFF1E4620),
+                        style: TextStyle(
+                          color: textColor,
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
                         ),
@@ -508,9 +560,9 @@ class _TestQuizScreenState extends State<TestQuizScreen> {
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 2),
-                      const Text(
+                      Text(
                         'Муваффақият бор карда шуд',
-                        style: TextStyle(color: Colors.black45, fontSize: 12),
+                        style: TextStyle(color: textColor.withOpacity(0.5), fontSize: 12),
                       ),
                     ],
                   ),
@@ -532,7 +584,7 @@ class _TestQuizScreenState extends State<TestQuizScreen> {
     );
   }
 
-  Widget _buildQuestionOptions(QuestionModel question) {
+  Widget _buildQuestionOptions(QuestionModel question, Color textColor, Color backgroundColor) {
     final options = [
       if (question.optionA.isNotEmpty) MapEntry('A', question.optionA),
       if (question.optionB.isNotEmpty) MapEntry('B', question.optionB),
@@ -541,7 +593,7 @@ class _TestQuizScreenState extends State<TestQuizScreen> {
     ];
 
     if (question.questionType == 'Closed') {
-      return _buildClosedAnswer(question);
+      return _buildClosedAnswer(question, textColor, backgroundColor);
     } else if (question.questionType == 'Multiple') {
       final selected = _multipleAnswers[question.id] ?? {};
       return Column(
@@ -550,7 +602,7 @@ class _TestQuizScreenState extends State<TestQuizScreen> {
             padding: const EdgeInsets.only(bottom: 12),
             child: Text(
               'Якчанд вариантро интихоб кунед',
-              style: TextStyle(color: Colors.grey[500], fontSize: 13),
+              style: TextStyle(color: textColor.withOpacity(0.5), fontSize: 13),
             ),
           ),
           ...options.map((e) => _buildOptionCard(
@@ -559,6 +611,8 @@ class _TestQuizScreenState extends State<TestQuizScreen> {
                 isSelected: selected.contains(e.key),
                 isMultiple: true,
                 onTap: () => _toggleMultiple(question.id, e.key),
+                textColor: textColor,
+                backgroundColor: backgroundColor,
               )),
         ],
       );
@@ -571,6 +625,8 @@ class _TestQuizScreenState extends State<TestQuizScreen> {
               isSelected: selected == e.key,
               isMultiple: false,
               onTap: () => _selectSingle(question.id, e.key),
+              textColor: textColor,
+              backgroundColor: backgroundColor,
             )).toList(),
       );
     }
@@ -578,24 +634,34 @@ class _TestQuizScreenState extends State<TestQuizScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+    final textColor = theme.colorScheme.onSurface;
+    final backgroundColor = theme.scaffoldBackgroundColor;
+    final cardColor = theme.cardColor;
+
     if (_isLoading) {
-      return const Scaffold(
-        backgroundColor: Color(0xFF4A148C),
-        body: Center(child: CircularProgressIndicator(color: Colors.white)),
+      return Scaffold(
+        backgroundColor: backgroundColor,
+        body: Center(child: CircularProgressIndicator(color: theme.colorScheme.primary)),
       );
+    }
+
+    if (_submissionResult != null) {
+      return _buildSuccessScreen(theme, textColor, backgroundColor, isDarkMode);
     }
 
     if (_test == null || _test!.questions.isEmpty) {
       return Scaffold(
-        backgroundColor: const Color(0xFF4A148C),
+        backgroundColor: backgroundColor,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
-          title: Text(widget.testTitle, style: const TextStyle(color: Colors.white)),
-          iconTheme: const IconThemeData(color: Colors.white),
+          title: Text(widget.testTitle, style: TextStyle(color: textColor)),
+          iconTheme: IconThemeData(color: textColor),
         ),
-        body: const Center(
-          child: Text('Саволҳо ёфт нашуданд.', style: TextStyle(color: Colors.white)),
+        body: Center(
+          child: Text('Саволҳо ёфт нашуданд.', style: TextStyle(color: textColor)),
         ),
       );
     }
@@ -605,215 +671,198 @@ class _TestQuizScreenState extends State<TestQuizScreen> {
     final isLastQuestion = _currentQuestionIndex == questions.length - 1;
 
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF311B92),
-              Color(0xFF512DA8),
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // Top custom header row
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: IconButton(
-                        padding: EdgeInsets.zero,
-                        icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
-                        onPressed: () => Navigator.of(context).pop(),
-                      ),
-                    ),
-                    Text(
-                      '${(_currentQuestionIndex + 1).toString().padLeft(2, '0')} аз ${questions.length.toString().padLeft(2, '0')}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.timer_outlined, color: Colors.amber, size: 16),
-                          const SizedBox(width: 6),
-                          Text(
-                            _formatTime(_secondsRemaining),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Progress bar
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: LinearProgressIndicator(
-                    value: (questions.isNotEmpty) ? (_currentQuestionIndex + 1) / questions.length : 0,
-                    backgroundColor: Colors.white.withOpacity(0.1),
-                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF00C853)),
-                    minHeight: 6,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // White Question Card
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(24),
+      backgroundColor: backgroundColor,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Top custom header row
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(30),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.15),
-                          blurRadius: 25,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
+                      color: textColor.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: textColor.withOpacity(0.1)),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      icon: Icon(Icons.arrow_back_ios_new, color: textColor, size: 20),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ),
+                  Text(
+                    '${(_currentQuestionIndex + 1).toString().padLeft(2, '0')} аз ${questions.length.toString().padLeft(2, '0')}',
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: textColor.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: textColor.withOpacity(0.1)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
+                        Icon(Icons.timer_outlined, color: textColor, size: 16),
+                        const SizedBox(width: 6),
                         Text(
-                          widget.testTitle.toUpperCase(),
+                          _formatTime(_secondsRemaining),
                           style: TextStyle(
-                            color: Colors.deepPurple[300],
-                            fontSize: 12,
+                            color: textColor,
                             fontWeight: FontWeight.bold,
-                            letterSpacing: 1.2,
+                            fontSize: 14,
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        Text(
-                          currentQuestion.questionText,
-                          style: const TextStyle(
-                            color: Color(0xFF1E1C24),
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            height: 1.4,
-                          ),
-                        ),
-                        if (currentQuestion.imageUrl != null && currentQuestion.imageUrl!.isNotEmpty) ...[
-                          const SizedBox(height: 16),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(16),
-                            child: Image.network(
-                              currentQuestion.imageUrl!.startsWith('http')
-                                  ? currentQuestion.imageUrl!
-                                  : '${ApiService.baseUrl}${currentQuestion.imageUrl}',
-                              fit: BoxFit.contain,
-                              height: 180,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Container(
-                                  height: 100,
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey[100],
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  child: const Center(
-                                    child: Text(
-                                      'Хатогӣ дар боргузории сурат',
-                                      style: TextStyle(color: Colors.black38),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 24),
-                        Divider(color: Colors.grey[200], thickness: 1.5),
-                        const SizedBox(height: 20),
-                        _buildQuestionOptions(currentQuestion),
                       ],
                     ),
                   ),
+                ],
+              ),
+            ),
+
+            // Progress bar
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: LinearProgressIndicator(
+                  value: (questions.isNotEmpty) ? (_currentQuestionIndex + 1) / questions.length : 0,
+                  backgroundColor: textColor.withOpacity(0.1),
+                  valueColor: AlwaysStoppedAnimation<Color>(textColor),
+                  minHeight: 6,
                 ),
               ),
+            ),
+            const SizedBox(height: 20),
 
-              // Bottom control buttons
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-                child: Row(
-                  children: [
-                    if (_currentQuestionIndex > 0) ...[
-                      Expanded(
-                        flex: 1,
-                        child: OutlinedButton(
-                          onPressed: () => setState(() => _currentQuestionIndex--),
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Colors.white30, width: 1.5),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                          ),
-                          child: const Text(
-                            'БА АҚИБ',
-                            style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold, letterSpacing: 1.1),
-                          ),
+            // Question Card
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: cardColor,
+                    borderRadius: BorderRadius.circular(30),
+                    border: Border.all(color: textColor.withOpacity(0.1)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        widget.testTitle.toUpperCase(),
+                        style: TextStyle(
+                          color: textColor.withOpacity(0.5),
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.2,
                         ),
                       ),
-                      const SizedBox(width: 14),
-                    ],
-                    Expanded(
-                      flex: 2,
-                      child: ElevatedButton(
-                        onPressed: isLastQuestion ? _submitTest : () => setState(() => _currentQuestionIndex++),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF00C853),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          elevation: 4,
+                      const SizedBox(height: 12),
+                      Text(
+                        currentQuestion.questionText,
+                        style: TextStyle(
+                          color: textColor,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          height: 1.4,
                         ),
-                        child: Text(
-                          isLastQuestion ? 'СУПОРИДАН' : 'НАВБАТӢ',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.1,
+                      ),
+                      if (currentQuestion.imageUrl != null && currentQuestion.imageUrl!.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: CachedNetworkImage(
+                            imageUrl: currentQuestion.imageUrl!.startsWith('http')
+                                ? currentQuestion.imageUrl!
+                                : '${ApiService.baseUrl}${currentQuestion.imageUrl}',
+                            fit: BoxFit.contain,
+                            height: 180,
+                            placeholder: (context, url) => Center(child: CircularProgressIndicator(color: textColor)),
+                            errorWidget: (context, url, error) {
+                              return Container(
+                                height: 100,
+                                decoration: BoxDecoration(
+                                  color: textColor.withOpacity(0.05),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    'Хатогӣ дар боргузории сурат',
+                                    style: TextStyle(color: textColor.withOpacity(0.3)),
+                                  ),
+                                ),
+                              );
+                            },
                           ),
+                        ),
+                      ],
+                      const SizedBox(height: 24),
+                      Divider(color: textColor.withOpacity(0.1), thickness: 1.5),
+                      const SizedBox(height: 20),
+                      _buildQuestionOptions(currentQuestion, textColor, backgroundColor),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // Bottom control buttons
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+              child: Row(
+                children: [
+                  if (_currentQuestionIndex > 0) ...[
+                    Expanded(
+                      flex: 1,
+                      child: OutlinedButton(
+                        onPressed: () => setState(() => _currentQuestionIndex--),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                        ),
+                        child: const Text(
+                          'БА АҚИБ',
+                          style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.1),
                         ),
                       ),
                     ),
+                    const SizedBox(width: 14),
                   ],
-                ),
+                  Expanded(
+                    flex: 2,
+                    child: ElevatedButton(
+                      onPressed: isLastQuestion ? _submitTest : () => setState(() => _currentQuestionIndex++),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                        elevation: 0,
+                      ),
+                      child: Text(
+                        isLastQuestion ? 'СУПОРИДАН' : 'НАВБАТӢ',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.1,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

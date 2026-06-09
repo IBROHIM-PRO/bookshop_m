@@ -111,7 +111,7 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('"${book.title}" ба сабад илова шуд!'),
-        backgroundColor: Colors.teal,
+        backgroundColor: Colors.black,
       ),
     );
   }
@@ -129,6 +129,7 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
   Widget _buildLibraryTab() {
     final theme = Theme.of(context);
     final primaryColor = theme.colorScheme.primary;
+    final isDarkMode = theme.brightness == Brightness.dark;
 
     return Column(
       children: [
@@ -139,9 +140,9 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
             height: 48,
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.04),
+              color: isDarkMode ? Colors.white10 : Colors.black.withOpacity(0.05),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white.withOpacity(0.06)),
+              border: Border.all(color: isDarkMode ? Colors.white10 : Colors.black12),
             ),
             child: Row(
               children: [
@@ -158,8 +159,8 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
                         'Мағоза',
                         style: TextStyle(
                           color: _librarySubTab == 0
-                              ? (theme.brightness == Brightness.dark && primaryColor == Colors.white ? Colors.black : Colors.white)
-                              : Colors.white60,
+                              ? (isDarkMode ? Colors.black : Colors.white)
+                              : (isDarkMode ? Colors.white60 : Colors.black54),
                           fontWeight: FontWeight.bold,
                           fontSize: 12,
                         ),
@@ -180,8 +181,8 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
                         'Китобҳои ман',
                         style: TextStyle(
                           color: _librarySubTab == 1
-                              ? (theme.brightness == Brightness.dark && primaryColor == Colors.white ? Colors.black : Colors.white)
-                              : Colors.white60,
+                              ? (isDarkMode ? Colors.black : Colors.white)
+                              : (isDarkMode ? Colors.white60 : Colors.black54),
                           fontWeight: FontWeight.bold,
                           fontSize: 12,
                         ),
@@ -207,168 +208,11 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
     );
   }
 
-  Widget _buildCategoryBooksView() {
-    final theme = Theme.of(context);
-    final primaryColor = theme.colorScheme.primary;
-
-    final filtered = _books.where((book) {
-      final matchesSearch = book.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          book.author.toLowerCase().contains(_searchQuery.toLowerCase());
-      return matchesSearch;
-    }).toList();
-
-    final Map<String, List<Book>> groupedBooks = {};
-    for (var cat in _categories) {
-      final catName = cat['name'] as String;
-      final catId = cat['id'] as int;
-      final catBooks = filtered.where((b) => b.categoryId == catId).toList();
-      if (catBooks.isNotEmpty) {
-        groupedBooks[catName] = catBooks;
-      }
-    }
-
-    if (_isLoading) {
-      return Center(child: CircularProgressIndicator(color: primaryColor));
-    }
-
-    return Column(
-      children: [
-        // Search Bar
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: TextField(
-            style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              hintText: 'Ҷустуҷӯи китобҳо...',
-              hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
-              prefixIcon: Icon(Icons.search, color: primaryColor),
-              filled: true,
-              fillColor: Colors.white.withOpacity(0.05),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide(color: primaryColor, width: 2),
-              ),
-            ),
-            onChanged: (val) => setState(() => _searchQuery = val),
-          ),
-        ),
-
-        Expanded(
-          child: groupedBooks.isEmpty
-              ? Center(
-                  child: Text(
-                    'Китобҳо ёфт нашуданд',
-                    style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 16),
-                  ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  itemCount: groupedBooks.keys.length,
-                  itemBuilder: (context, catIndex) {
-                    final catName = groupedBooks.keys.elementAt(catIndex);
-                    final catBooks = groupedBooks[catName]!;
-
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-                          child: Text(
-                            catName,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        SizedBox(
-                          height: 200,
-                          child: ListView.builder(
-                            scrollDirection: Axis.horizontal,
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            itemCount: catBooks.length,
-                            itemBuilder: (context, idx) {
-                              final book = catBooks[idx];
-                              return GestureDetector(
-                                onTap: () {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => BookDetailsScreen(
-                                        book: book,
-                                        onAddToCart: () => _addToCart(book),
-                                      ),
-                                    ),
-                                  );
-                                },
-                                child: Container(
-                                  width: 120,
-                                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Expanded(
-                                        child: Center(
-                                          child: Padding(
-                                            padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
-                                            child: Book3D(
-                                              imageUrl: book.imageUrl,
-                                              title: book.title,
-                                              width: 85,
-                                              height: 125,
-                                              depth: 15,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        book.title,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      Text(
-                                        book.author,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          color: Colors.white.withOpacity(0.5),
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                          child: Divider(color: Colors.white.withOpacity(0.08)),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildShopContent() {
     final theme = Theme.of(context);
     final primaryColor = theme.colorScheme.primary;
+    final isDarkMode = theme.brightness == Brightness.dark;
+    final textColor = isDarkMode ? Colors.white : Colors.black;
 
     if (_isLoading) {
       return Center(child: CircularProgressIndicator(color: primaryColor));
@@ -380,16 +224,16 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
         Padding(
           padding: const EdgeInsets.all(16.0),
           child: TextField(
-            style: const TextStyle(color: Colors.white),
+            style: TextStyle(color: textColor),
             decoration: InputDecoration(
               hintText: 'Ҷустуҷӯи китобҳо ё муаллифон...',
-              hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+              hintStyle: TextStyle(color: textColor.withOpacity(0.5)),
               prefixIcon: Icon(Icons.search, color: primaryColor),
               filled: true,
-              fillColor: Colors.white.withOpacity(0.05),
+              fillColor: isDarkMode ? Colors.white10 : Colors.black.withOpacity(0.05),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                borderSide: BorderSide(color: isDarkMode ? Colors.white10 : Colors.black12),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
@@ -410,11 +254,11 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
                 label: const Text('Ҳама'),
                 selected: _selectedCategoryId == null,
                 selectedColor: primaryColor,
-                backgroundColor: Colors.white.withOpacity(0.05),
+                backgroundColor: isDarkMode ? Colors.white10 : Colors.black.withOpacity(0.05),
                 labelStyle: TextStyle(
                   color: _selectedCategoryId == null
-                      ? (theme.brightness == Brightness.dark && primaryColor == Colors.white ? Colors.black : Colors.white)
-                      : Colors.white.withOpacity(0.6),
+                      ? (isDarkMode ? Colors.black : Colors.white)
+                      : (isDarkMode ? Colors.white60 : Colors.black54),
                 ),
                 onSelected: (selected) {
                   if (selected) setState(() => _selectedCategoryId = null);
@@ -431,11 +275,11 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
                     label: Text(catName),
                     selected: isSelected,
                     selectedColor: primaryColor,
-                    backgroundColor: Colors.white.withOpacity(0.05),
+                    backgroundColor: isDarkMode ? Colors.white10 : Colors.black.withOpacity(0.05),
                     labelStyle: TextStyle(
                       color: isSelected
-                          ? (theme.brightness == Brightness.dark && primaryColor == Colors.white ? Colors.black : Colors.white)
-                          : Colors.white.withOpacity(0.6),
+                          ? (isDarkMode ? Colors.black : Colors.white)
+                          : (isDarkMode ? Colors.white60 : Colors.black54),
                     ),
                     onSelected: (selected) => setState(() => _selectedCategoryId = selected ? catId : null),
                   ),
@@ -453,7 +297,7 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
               ? Center(
                   child: Text(
                     'Китобҳо ёфт нашуданд',
-                    style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 16),
+                    style: TextStyle(color: textColor.withOpacity(0.6), fontSize: 16),
                   ),
                 )
               : GridView.builder(
@@ -481,9 +325,16 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
                       },
                       child: Container(
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.03),
+                          color: Theme.of(context).cardColor,
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Colors.white.withOpacity(0.05)),
+                          border: Border.all(color: isDarkMode ? Colors.white.withOpacity(0.08) : const Color(0xFFD1E2D5)),
+                          boxShadow: isDarkMode ? [] : [
+                            BoxShadow(
+                              color: const Color(0xFF228B22).withOpacity(0.04),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -536,14 +387,14 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
                                     book.title,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                                    style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.bold),
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
                                     book.author,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 11),
+                                    style: TextStyle(color: textColor.withOpacity(0.5), fontSize: 11),
                                   ),
                                   const SizedBox(height: 8),
                                   Row(
@@ -551,7 +402,7 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
                                     children: [
                                       Text(
                                         '${book.price.toStringAsFixed(0)} TJS',
-                                        style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 13),
+                                        style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 13),
                                       ),
                                       if (canBuy)
                                         GestureDetector(
@@ -559,17 +410,18 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
                                           child: Container(
                                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                             decoration: BoxDecoration(
-                                              color: primaryColor.withOpacity(0.15),
+                                              color: textColor.withOpacity(0.1),
                                               borderRadius: BorderRadius.circular(8),
+                                              border: Border.all(color: textColor.withOpacity(0.2)),
                                             ),
                                             child: Row(
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
-                                                Icon(Icons.add_shopping_cart, color: primaryColor, size: 12),
+                                                Icon(Icons.add_shopping_cart, color: textColor, size: 12),
                                                 const SizedBox(width: 2),
                                                 Text(
                                                   'Харид',
-                                                  style: TextStyle(color: primaryColor, fontSize: 10, fontWeight: FontWeight.bold),
+                                                  style: TextStyle(color: textColor, fontSize: 10, fontWeight: FontWeight.bold),
                                                 ),
                                               ],
                                             ),
@@ -592,36 +444,44 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
   }
 
   Widget _buildTypeTag(String type) {
-    final isBw = Provider.of<ThemeProvider>(context, listen: false).isBlackAndWhite;
-    Color color;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDarkMode ? Colors.white : Colors.black;
     String text;
     if (type == 'Electronic') {
-      color = isBw ? Colors.white : Colors.teal;
       text = 'Электронӣ';
     } else if (type == 'Printed') {
-      color = isBw ? Colors.white70 : Colors.orangeAccent;
       text = 'Чопӣ';
     } else {
-      color = isBw ? Colors.white60 : Colors.blueAccent;
       text = 'Ҳарду';
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
+        color: textColor.withOpacity(0.1),
         borderRadius: BorderRadius.circular(8),
-        border: isBw ? Border.all(color: color.withOpacity(0.3)) : null,
+        border: Border.all(color: textColor.withOpacity(0.2)),
       ),
-      child: Text(text, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold)),
+      child: Text(text, style: TextStyle(color: textColor, fontSize: 11, fontWeight: FontWeight.bold)),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
     final user = Provider.of<AuthProvider>(context).currentUser;
     final String userName = user?.name ?? 'Хонанда';
-    final theme = Theme.of(context);
     final primaryColor = theme.colorScheme.primary;
+    final textColor = isDarkMode ? Colors.white : Colors.black;
+
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: theme.scaffoldBackgroundColor,
+        body: Center(
+          child: CircularProgressIndicator(color: primaryColor),
+        ),
+      );
+    }
 
     final List<Widget> tabs = [
       _buildLibraryTab(),
@@ -641,7 +501,7 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
           children: [
             Text(
               'Салом, $userName!',
-              style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+              style: TextStyle(color: textColor, fontSize: 20, fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -649,10 +509,8 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
           // Theme Switcher Button
           IconButton(
             icon: Icon(
-              Provider.of<ThemeProvider>(context).isBlackAndWhite
-                  ? Icons.wb_sunny_outlined
-                  : Icons.dark_mode_outlined,
-              color: Colors.white,
+              isDarkMode ? Icons.wb_sunny_outlined : Icons.nightlight_round,
+              color: textColor,
             ),
             onPressed: () {
               Provider.of<ThemeProvider>(context, listen: false).toggleTheme();
@@ -662,16 +520,16 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
 
           // Notifications button
           IconButton(
-            icon: const Icon(Icons.notifications_outlined, color: Colors.white),
+            icon: Icon(Icons.notifications_outlined, color: textColor),
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) => Scaffold(
                     appBar: AppBar(
-                      title: const Text('Паёмҳо', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      title: Text('Паёмҳо', style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
                       backgroundColor: theme.appBarTheme.backgroundColor,
                       elevation: 0,
-                      iconTheme: const IconThemeData(color: Colors.white),
+                      iconTheme: IconThemeData(color: textColor),
                     ),
                     body: const NotificationsFeedScreen(),
                   ),
@@ -686,7 +544,7 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
             clipBehavior: Clip.none,
             children: [
               IconButton(
-                icon: const Icon(Icons.shopping_cart_outlined, color: Colors.white),
+                icon: Icon(Icons.shopping_cart_outlined, color: textColor),
                 onPressed: _openCart,
                 tooltip: 'Сабади харид',
               ),
@@ -698,14 +556,14 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
                     width: 18,
                     height: 18,
                     decoration: BoxDecoration(
-                      color: primaryColor == Colors.white ? Colors.white : Colors.teal,
+                      color: primaryColor,
                       shape: BoxShape.circle,
                     ),
                     child: Center(
                       child: Text(
                         '$_cartCount',
                         style: TextStyle(
-                          color: primaryColor == Colors.white ? Colors.black : Colors.white,
+                          color: isDarkMode ? Colors.black : Colors.white,
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
                         ),
@@ -721,14 +579,13 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
       bottomNavigationBar: Container(
         height: 70,
         decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, -2),
+          color: theme.brightness == Brightness.dark ? theme.cardColor : Colors.white,
+          border: Border(
+            top: BorderSide(
+              color: theme.brightness == Brightness.dark ? Colors.white12 : const Color(0xFFD1E2D5),
+              width: 1.0,
             ),
-          ],
+          ),
         ),
         child: SafeArea(
           child: Row(
@@ -748,41 +605,35 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
 
   Widget _buildBottomNavItem(int index, IconData icon, String label, ThemeData theme) {
     final isSelected = _currentIndex == index;
-    final isBw = Provider.of<ThemeProvider>(context).isBlackAndWhite;
-    final highlightColor = isBw ? Colors.black : const Color(0xFF6B4FB3);
+    final isDarkMode = theme.brightness == Brightness.dark;
+
+    final Color activeColor = isDarkMode ? Colors.white : const Color(0xFF1E7431);
+    final Color inactiveColor = isDarkMode ? Colors.white.withOpacity(0.4) : const Color(0xFF8A9A8E);
+    final Color itemColor = isSelected ? activeColor : inactiveColor;
 
     return Expanded(
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () => setState(() => _currentIndex = index),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-          padding: const EdgeInsets.symmetric(vertical: 6),
-          decoration: BoxDecoration(
-            color: isSelected ? highlightColor : Colors.transparent,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                color: isSelected ? Colors.white : Colors.white.withOpacity(0.4),
-                size: 20,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              color: itemColor,
+              size: 22,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: itemColor,
+                fontSize: 10,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
-              const SizedBox(height: 2),
-              Text(
-                label,
-                style: TextStyle(
-                  color: isSelected ? Colors.white : Colors.white.withOpacity(0.4),
-                  fontSize: 10,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

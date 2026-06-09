@@ -30,6 +30,30 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
     super.dispose();
   }
 
+  InputDecoration _inputDecoration(String label, {String? hint}) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: const TextStyle(color: Color(0xFF788C7D), fontSize: 14),
+      hintText: hint,
+      hintStyle: const TextStyle(color: Color(0xFF788C7D), fontSize: 13),
+      filled: true,
+      fillColor: const Color(0xFF1A241D),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFF2E3D32)),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFF2E3D32)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFF1E7431), width: 1.5),
+      ),
+    );
+  }
+
   void _addQuestion() {
     setState(() {
       _questions.add({
@@ -162,10 +186,10 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F0C20),
+      backgroundColor: const Color(0xFF0D120E),
       appBar: AppBar(
         title: const Text('Сохтани тести нав', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: const Color(0xFF15102A),
+        backgroundColor: const Color(0xFF162218),
       ),
       body: Form(
         key: _formKey,
@@ -176,9 +200,9 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.02),
+                color: const Color(0xFF162218),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withOpacity(0.05)),
+                border: Border.all(color: const Color(0xFF2E3D32)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -191,15 +215,7 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
                   TextFormField(
                     controller: _titleController,
                     style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      labelText: 'Номи тест',
-                      labelStyle: const TextStyle(color: Colors.white70),
-                      hintText: 'Масалан: Имтиҳони ниҳоӣ аз Математика',
-                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
-                      filled: true,
-                      fillColor: Colors.black26,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
+                    decoration: _inputDecoration('Номи тест', hint: 'Масалан: Имтиҳони ниҳоӣ аз Математика'),
                     validator: (val) => val == null || val.trim().isEmpty ? 'Номи тестро ворид кунед' : null,
                   ),
                   const SizedBox(height: 12),
@@ -207,15 +223,7 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
                     controller: _descriptionController,
                     style: const TextStyle(color: Colors.white),
                     maxLines: 2,
-                    decoration: InputDecoration(
-                      labelText: 'Тавсифи тест (ихтиёрӣ)',
-                      labelStyle: const TextStyle(color: Colors.white70),
-                      hintText: 'Тавсифи кӯтоҳи имтиҳон...',
-                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
-                      filled: true,
-                      fillColor: Colors.black26,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
+                    decoration: _inputDecoration('Тавсифи тест (ихтиёрӣ)', hint: 'Тавсифи кӯтоҳи имтиҳон...'),
                   ),
                 ],
               ),
@@ -249,9 +257,9 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
                 margin: const EdgeInsets.only(bottom: 16),
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.04),
+                  color: const Color(0xFF162218),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.white.withOpacity(0.08)),
+                  border: Border.all(color: const Color(0xFF2E3D32)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -260,11 +268,11 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Chip(
-                          backgroundColor: Colors.deepPurpleAccent.withOpacity(0.15),
+                          backgroundColor: const Color(0xFF1E7431).withOpacity(0.15),
                           side: BorderSide.none,
                           label: Text(
                             'Саволи ${index + 1}',
-                            style: const TextStyle(color: Colors.deepPurpleAccent, fontWeight: FontWeight.bold, fontSize: 12),
+                            style: const TextStyle(color: Color(0xFFA3E635), fontWeight: FontWeight.bold, fontSize: 12),
                           ),
                         ),
                         IconButton(
@@ -276,13 +284,7 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
                     const SizedBox(height: 12),
                     TextFormField(
                       style: const TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        labelText: 'Матни савол',
-                        labelStyle: const TextStyle(color: Colors.white70),
-                        filled: true,
-                        fillColor: Colors.black26,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
+                      decoration: _inputDecoration('Матни савол'),
                       initialValue: q['questionText'],
                       onChanged: (val) => q['questionText'] = val,
                     ),
@@ -292,16 +294,10 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
                       children: [
                         Expanded(
                           child: DropdownButtonFormField<String>(
-                            dropdownColor: const Color(0xFF15102A),
+                            dropdownColor: const Color(0xFF162218),
                             value: qType,
                             style: const TextStyle(color: Colors.white),
-                            decoration: InputDecoration(
-                              labelText: 'Намуди савол',
-                              labelStyle: const TextStyle(color: Colors.white70),
-                              filled: true,
-                              fillColor: Colors.black26,
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
+                            decoration: _inputDecoration('Намуди савол'),
                             items: const [
                               DropdownMenuItem(value: 'Single', child: Text('Интихобӣ (Якҷавоба)')),
                               DropdownMenuItem(value: 'Multiple', child: Text('Интихобӣ (Мултиҷавоб)')),
@@ -340,13 +336,7 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
                           child: TextFormField(
                             keyboardType: TextInputType.number,
                             style: const TextStyle(color: Colors.white),
-                            decoration: InputDecoration(
-                              labelText: 'Балл',
-                              labelStyle: const TextStyle(color: Colors.white70),
-                              filled: true,
-                              fillColor: Colors.black26,
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
+                            decoration: _inputDecoration('Балл'),
                             initialValue: '${q['points']}',
                             onChanged: (val) {
                               q['points'] = int.tryParse(val) ?? 10;
@@ -358,15 +348,7 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
                     const SizedBox(height: 12),
                     TextFormField(
                       style: const TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        labelText: 'Сурати савол (URL-и сурат, ихтиёрӣ)',
-                        labelStyle: const TextStyle(color: Colors.white70),
-                        hintText: 'Масалан: https://example.com/image.png',
-                        hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
-                        filled: true,
-                        fillColor: Colors.black26,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
+                      decoration: _inputDecoration('Сурати савол (URL-и сурат, ихтиёрӣ)', hint: 'Масалан: https://example.com/image.png'),
                       initialValue: q['imageUrl'] ?? '',
                       onChanged: (val) => q['imageUrl'] = val,
                     ),
@@ -375,15 +357,7 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
                       const SizedBox(height: 16),
                       TextFormField(
                         style: const TextStyle(color: Colors.white),
-                        decoration: InputDecoration(
-                          labelText: 'Рамз / Ҷавоби дуруст (ихтиёрӣ)',
-                          labelStyle: const TextStyle(color: Colors.white70),
-                          hintText: 'Калима ё рамзи махсус барои санҷиши автоматӣ',
-                          hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
-                          filled: true,
-                          fillColor: Colors.black26,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
+                        decoration: _inputDecoration('Рамз / Ҷавоби дуруст (ихтиёрӣ)', hint: 'Калима ё рамзи махсус барои санҷиши автоматӣ'),
                         initialValue: q['correctOption'] ?? '',
                         onChanged: (val) => q['correctOption'] = val,
                       ),
@@ -419,9 +393,12 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
                             ChoiceChip(
                               label: const Text('Рост'),
                               selected: q['correctOption'] == 'A',
-                              selectedColor: Colors.deepPurpleAccent,
-                              backgroundColor: Colors.black26,
-                              labelStyle: TextStyle(color: q['correctOption'] == 'A' ? Colors.white : Colors.white60),
+                              selectedColor: const Color(0xFF1E7431),
+                              backgroundColor: Colors.transparent,
+                              side: BorderSide(
+                                color: q['correctOption'] == 'A' ? const Color(0xFF1E7431) : const Color(0xFF1E7431).withOpacity(0.2),
+                              ),
+                              labelStyle: TextStyle(color: q['correctOption'] == 'A' ? Colors.white : const Color(0xFF657367)),
                               onSelected: (selected) {
                                 if (selected) {
                                   setState(() {
@@ -433,9 +410,12 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
                             ChoiceChip(
                               label: const Text('Дурӯғ'),
                               selected: q['correctOption'] == 'B',
-                              selectedColor: Colors.deepPurpleAccent,
-                              backgroundColor: Colors.black26,
-                              labelStyle: TextStyle(color: q['correctOption'] == 'B' ? Colors.white : Colors.white60),
+                              selectedColor: const Color(0xFF1E7431),
+                              backgroundColor: Colors.transparent,
+                              side: BorderSide(
+                                color: q['correctOption'] == 'B' ? const Color(0xFF1E7431) : const Color(0xFF1E7431).withOpacity(0.2),
+                              ),
+                              labelStyle: TextStyle(color: q['correctOption'] == 'B' ? Colors.white : const Color(0xFF657367)),
                               onSelected: (selected) {
                                 if (selected) {
                                   setState(() {
@@ -447,16 +427,20 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
                           ],
                         )
                       else if (qType == 'Single')
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        Wrap(
+                          spacing: 8.0,
+                          runSpacing: 8.0,
                           children: ['A', 'B', 'C', 'D'].map((opt) {
                             final bool active = q['correctOption'] == opt;
                             return ChoiceChip(
                               label: Text('Варианти $opt'),
                               selected: active,
-                              selectedColor: Colors.deepPurpleAccent,
-                              backgroundColor: Colors.black26,
-                              labelStyle: TextStyle(color: active ? Colors.white : Colors.white60),
+                              selectedColor: const Color(0xFF1E7431),
+                              backgroundColor: Colors.transparent,
+                              side: BorderSide(
+                                color: active ? const Color(0xFF1E7431) : const Color(0xFF1E7431).withOpacity(0.2),
+                              ),
+                              labelStyle: TextStyle(color: active ? Colors.white : const Color(0xFF657367)),
                               onSelected: (selected) {
                                 if (selected) {
                                   setState(() {
@@ -468,8 +452,9 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
                           }).toList(),
                         )
                       else
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        Wrap(
+                          spacing: 8.0,
+                          runSpacing: 8.0,
                           children: ['A', 'B', 'C', 'D'].map((opt) {
                             final String correctStr = q['correctOption'] ?? '';
                             final List<String> list = correctStr.split(',').map((o) => o.trim()).toList();
@@ -477,10 +462,13 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
                             return FilterChip(
                               label: Text('Варианти $opt'),
                               selected: active,
-                              selectedColor: Colors.deepPurpleAccent,
-                              backgroundColor: Colors.black26,
+                              selectedColor: const Color(0xFF1E7431),
+                              backgroundColor: Colors.transparent,
                               checkmarkColor: Colors.white,
-                              labelStyle: TextStyle(color: active ? Colors.white : Colors.white60),
+                              side: BorderSide(
+                                color: active ? const Color(0xFF1E7431) : const Color(0xFF1E7431).withOpacity(0.2),
+                              ),
+                              labelStyle: TextStyle(color: active ? Colors.white : const Color(0xFF657367)),
                               onSelected: (_) => _toggleMultiCorrectOption(index, opt),
                             );
                           }).toList(),
@@ -493,13 +481,14 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
 
             const SizedBox(height: 16),
             if (_isSaving)
-              const Center(child: CircularProgressIndicator(color: Colors.deepPurpleAccent))
+              const Center(child: CircularProgressIndicator(color: Color(0xFF1E7431)))
             else
               ElevatedButton(
                 onPressed: _saveTest,
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  backgroundColor: const Color(0xFF1E7431),
+                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
                 ),
                 child: const Text(
                   'Захира кардани тест',
@@ -518,13 +507,10 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
       padding: const EdgeInsets.only(bottom: 8.0),
       child: TextFormField(
         style: const TextStyle(color: Colors.white, fontSize: 13),
-        decoration: InputDecoration(
+        decoration: _inputDecoration('Варианти $label').copyWith(
           prefixText: 'Варианти $label:  ',
-          prefixStyle: const TextStyle(color: Colors.deepPurpleAccent, fontWeight: FontWeight.bold),
-          filled: true,
-          fillColor: Colors.black12,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          prefixStyle: const TextStyle(color: Color(0xFF1E7431), fontWeight: FontWeight.bold),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         ),
         initialValue: q['option$label'],
         onChanged: (val) => q['option$label'] = val,

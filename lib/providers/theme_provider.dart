@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
 class ThemeProvider with ChangeNotifier {
-  bool _isBlackAndWhite = false;
+  bool _isDarkMode = true; // Default to dark mode
 
-  bool get isBlackAndWhite => _isBlackAndWhite;
+  bool get isDarkMode => _isDarkMode;
 
   void toggleTheme() {
-    _isBlackAndWhite = !_isBlackAndWhite;
+    _isDarkMode = !_isDarkMode;
     notifyListeners();
   }
 }

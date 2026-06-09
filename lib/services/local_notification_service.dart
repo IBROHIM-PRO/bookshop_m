@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 
 class LocalNotificationService {
@@ -17,7 +18,7 @@ class LocalNotificationService {
     if (kIsWeb) return;
 
     const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+        AndroidInitializationSettings('ic_notification');
 
     const DarwinInitializationSettings initializationSettingsIOS =
         DarwinInitializationSettings(
@@ -60,6 +61,7 @@ class LocalNotificationService {
       importance: Importance.max,
       priority: Priority.high,
       showWhen: true,
+      color: const Color(0xFF1E7431),
     );
     const DarwinNotificationDetails iOSPlatformChannelSpecifics =
         DarwinNotificationDetails(presentAlert: true, presentBadge: true, presentSound: true);

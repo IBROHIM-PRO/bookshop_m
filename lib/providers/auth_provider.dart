@@ -7,6 +7,7 @@ import '../services/api_service.dart';
 import '../services/fcm_service.dart';
 import '../services/websocket_service.dart';
 import '../services/local_notification_service.dart';
+import '../services/badge_service.dart';
 import '../main.dart' show navigatorKey, AuthWrapper;
 
 class AuthProvider with ChangeNotifier {
@@ -60,9 +61,11 @@ class AuthProvider with ChangeNotifier {
         title: title,
         body: message,
       );
+      BadgeService().updateBadgeCount();
     };
     
     _wsService!.connect(user.id, user.role);
+    BadgeService().updateBadgeCount();
   }
 
   void _showApprovalDialog(String requestId) {
@@ -102,14 +105,35 @@ class AuthProvider with ChangeNotifier {
       return false;
     }
 
+    // Set token temporarily so ApiService can use it for the validation request
     _currentUser = User.fromJson({
       ...userData,
       'token': token,
     });
-    notifyListeners();
-    FcmService().registerTokenWithBackend();
-    _connectGlobalWebSocket(_currentUser!);
-    return true;
+
+    // Validate the session with the backend
+    try {
+      final response = await ApiService.get('/api/auth/validate-session');
+      if (response.statusCode == 200) {
+        // Session is still valid — proceed with auto-login
+        notifyListeners();
+        FcmService().registerTokenWithBackend();
+        _connectGlobalWebSocket(_currentUser!);
+        return true;
+      } else {
+        // Session invalidated (e.g. logged in on another device)
+        _currentUser = null;
+        await prefs.remove('token');
+        await prefs.remove('user');
+        return false;
+      }
+    } catch (e) {
+      // Network error — allow offline auto-login from cached data
+      notifyListeners();
+      FcmService().registerTokenWithBackend();
+      _connectGlobalWebSocket(_currentUser!);
+      return true;
+    }
   }
 
   Future<String?> login(String email, String password) async {
@@ -187,7 +211,16 @@ class AuthProvider with ChangeNotifier {
 
   Future<void> logout() async {
     _wsService?.disconnect();
+
+    // Notify the backend to clear the session
+    try {
+      await ApiService.post('/api/auth/logout', {});
+    } catch (_) {
+      // Ignore network errors during logout
+    }
+
     _currentUser = null;
+    BadgeService().setBadge(0);
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('token');
     await prefs.remove('user');

@@ -85,27 +85,26 @@ class _MyBooksScreenState extends State<MyBooksScreen> {
 
   // Навъи китоб — tag ранги
   Widget _buildTypeTag(String type) {
-    Color color;
+    final theme = Theme.of(context);
+    final textColor = theme.colorScheme.onSurface;
     String text;
     if (type == 'Electronic') {
-      color = Colors.teal;
       text = 'Электронӣ';
     } else if (type == 'Printed') {
-      color = Colors.orangeAccent;
       text = 'Чопӣ';
     } else {
-      color = Colors.blueAccent;
       text = 'Ҳарду';
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.18),
+        color: textColor.withOpacity(0.1),
         borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: theme.dividerColor),
       ),
       child: Text(
         text,
-        style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.bold),
+        style: TextStyle(color: textColor, fontSize: 9, fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -126,16 +125,26 @@ class _MyBooksScreenState extends State<MyBooksScreen> {
   // ✅ Карти китоб барои grid
   Widget _buildBookCard(Book book) {
     final hasPdf = book.pdfUrl != null && book.pdfUrl!.isNotEmpty;
+    final theme = Theme.of(context);
     final hasContent = book.content != null && book.content!.isNotEmpty;
     final canRead = book.bookType == 'Electronic' || book.bookType == 'Both';
+    final textColor = theme.colorScheme.onSurface;
+    final cardColor = theme.cardColor;
 
     return GestureDetector(
       onTap: () => _openBook(context, book, preferPdf: hasPdf),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.04),
+          color: cardColor,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withOpacity(0.07)),
+          border: Border.all(color: theme.brightness == Brightness.dark ? Colors.white.withOpacity(0.08) : const Color(0xFFD1E2D5)),
+          boxShadow: theme.brightness == Brightness.dark ? [] : [
+            BoxShadow(
+              color: const Color(0xFF228B22).withOpacity(0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -166,21 +175,20 @@ class _MyBooksScreenState extends State<MyBooksScreen> {
                     book.title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
-                      height: 1.3,
                     ),
                   ),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 4),
                   Text(
                     book.author,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.5),
-                      fontSize: 11,
+                      color: textColor.withOpacity(0.6),
+                      fontSize: 12,
                     ),
                   ),
                   const SizedBox(height: 6),
@@ -200,7 +208,6 @@ class _MyBooksScreenState extends State<MyBooksScreen> {
                         child: _ReadButton(
                           label: 'PDF',
                           icon: Icons.picture_as_pdf,
-                          color: Colors.redAccent,
                           onTap: () => _openBook(context, book, preferPdf: true),
                         ),
                       ),
@@ -210,7 +217,6 @@ class _MyBooksScreenState extends State<MyBooksScreen> {
                         child: _ReadButton(
                           label: 'Матн',
                           icon: Icons.menu_book,
-                          color: Colors.deepPurpleAccent,
                           onTap: () => _openBook(context, book, preferPdf: false),
                         ),
                       ),
@@ -219,7 +225,6 @@ class _MyBooksScreenState extends State<MyBooksScreen> {
                         child: _ReadButton(
                           label: 'Хондан',
                           icon: Icons.menu_book,
-                          color: Colors.deepPurpleAccent,
                           onTap: () => _openBook(context, book),
                         ),
                       ),
@@ -235,9 +240,13 @@ class _MyBooksScreenState extends State<MyBooksScreen> {
   }
 
   Widget _buildBody() {
+    final theme = Theme.of(context);
+    final textColor = theme.colorScheme.onSurface;
+    final subTextColor = theme.colorScheme.onSurface.withOpacity(0.6);
+
     if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(color: Colors.deepPurpleAccent),
+      return Center(
+        child: CircularProgressIndicator(color: textColor),
       );
     }
 
@@ -246,21 +255,17 @@ class _MyBooksScreenState extends State<MyBooksScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.error_outline, size: 60, color: Colors.redAccent.withOpacity(0.6)),
+            Icon(Icons.error_outline, size: 60, color: textColor),
             const SizedBox(height: 16),
             Text(
               _error!,
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white.withOpacity(0.6)),
+              style: TextStyle(color: textColor),
             ),
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: _fetchMyBooks,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.deepPurpleAccent,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              child: const Text('Боз кӯшиш кунед', style: TextStyle(color: Colors.white)),
+              child: const Text('Боз кӯшиш кунед'),
             ),
           ],
         ),
@@ -272,11 +277,11 @@ class _MyBooksScreenState extends State<MyBooksScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.menu_book_outlined, size: 80, color: Colors.white.withOpacity(0.2)),
+            Icon(Icons.menu_book_outlined, size: 80, color: textColor.withOpacity(0.2)),
             const SizedBox(height: 20),
             Text(
-              'Шумо то ҳол ягон китоб нахаридаед',
-              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 16),
+              'Дар ҳоли ҳозир китобхонаи шумо холӣ аст.',
+              style: TextStyle(color: subTextColor, fontSize: 16),
             ),
           ],
         ),
@@ -286,7 +291,7 @@ class _MyBooksScreenState extends State<MyBooksScreen> {
     // ✅ GridView — 2 дар як қатор, мисли мағоза
     return RefreshIndicator(
       onRefresh: _fetchMyBooks,
-      color: Colors.deepPurpleAccent,
+      color: textColor,
       child: GridView.builder(
         padding: const EdgeInsets.all(16),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -303,23 +308,40 @@ class _MyBooksScreenState extends State<MyBooksScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final textColor = theme.colorScheme.onSurface;
+
+    if (_isLoading) {
+      if (!widget.showAppBar) {
+        return Center(
+          child: CircularProgressIndicator(color: textColor),
+        );
+      }
+      return Scaffold(
+        backgroundColor: theme.scaffoldBackgroundColor,
+        body: Center(
+          child: CircularProgressIndicator(color: textColor),
+        ),
+      );
+    }
+
     if (!widget.showAppBar) {
       return _buildBody();
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F0C20),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF15102A),
+        backgroundColor: theme.appBarTheme.backgroundColor,
         elevation: 0,
-        title: const Text(
+        title: Text(
           'Китобҳои ман',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
         ),
-        iconTheme: const IconThemeData(color: Colors.white),
+        iconTheme: IconThemeData(color: textColor),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white70),
+            icon: Icon(Icons.refresh, color: textColor.withOpacity(0.7)),
             onPressed: _fetchMyBooks,
           ),
         ],
@@ -333,36 +355,36 @@ class _MyBooksScreenState extends State<MyBooksScreen> {
 class _ReadButton extends StatelessWidget {
   final String label;
   final IconData icon;
-  final Color color;
   final VoidCallback onTap;
 
   const _ReadButton({
     required this.label,
     required this.icon,
-    required this.color,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final textColor = theme.colorScheme.onSurface;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 6),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.15),
+          color: textColor.withOpacity(0.1),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withOpacity(0.3)),
+          border: Border.all(color: theme.dividerColor),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 12, color: color),
+            Icon(icon, size: 12, color: textColor),
             const SizedBox(width: 4),
             Text(
               label,
               style: TextStyle(
-                color: color,
+                color: textColor,
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
               ),

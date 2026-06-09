@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'api_service.dart';
 import 'local_notification_service.dart';
+import 'badge_service.dart';
 
 class FcmService {
   static final FcmService _instance = FcmService._internal();
@@ -41,6 +42,7 @@ class FcmService {
                 title: message.notification!.title ?? 'Паёми нав',
                 body: message.notification!.body ?? '',
               );
+              BadgeService().updateBadgeCount();
             }
           });
         }
