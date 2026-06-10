@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/theme_provider.dart';
+import '../widgets/app_snackbar.dart';
 import 'reader/reader_home.dart';
 import 'parent/parent_dashboard.dart';
 
@@ -35,11 +36,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!mounted) return;
 
     if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error),
-          backgroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
-        ),
+      AppSnackBar.show(
+        context,
+        message: error,
+        type: error.contains('суст') ? SnackBarType.warning : SnackBarType.error,
       );
     } else {
       if (_selectedRole == 'Parent') {

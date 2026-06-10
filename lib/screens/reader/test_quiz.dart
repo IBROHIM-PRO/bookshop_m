@@ -632,6 +632,49 @@ class _TestQuizScreenState extends State<TestQuizScreen> {
     }
   }
 
+  Future<bool> _showExitWarningDialog() async {
+    final isDarkMode = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
+    final textColor = isDarkMode ? Colors.white : Colors.black;
+    final backgroundColor = isDarkMode ? Colors.black : Colors.white;
+
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: backgroundColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: BorderSide(color: textColor.withOpacity(0.1)),
+        ),
+        title: Row(
+          children: [
+            const Icon(Icons.warning_amber_rounded, color: Colors.orangeAccent, size: 28),
+            const SizedBox(width: 10),
+            Text(
+              'Огоҳӣ',
+              style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+          ],
+        ),
+        content: Text(
+          'Шумо дар вақти супоридани тест ҳастед. Агар ҳозир бароед, натиҷаҳои шумо сабт намешаванд. Оё дар ҳақиқат мехоҳед тестро тарк кунед?',
+          style: TextStyle(color: textColor.withOpacity(0.7), fontSize: 14, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text('Бекор кардан', style: TextStyle(color: textColor.withOpacity(0.6), fontWeight: FontWeight.bold)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Баромадан', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -670,31 +713,45 @@ class _TestQuizScreenState extends State<TestQuizScreen> {
     final currentQuestion = questions[_currentQuestionIndex];
     final isLastQuestion = _currentQuestionIndex == questions.length - 1;
 
-    return Scaffold(
-      backgroundColor: backgroundColor,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Top custom header row
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: textColor.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: textColor.withOpacity(0.1)),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldPop = await _showExitWarningDialog();
+        if (shouldPop && context.mounted) {
+          Navigator.of(context).pop();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: backgroundColor,
+        body: SafeArea(
+          child: Column(
+            children: [
+              // Top custom header row
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: textColor.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: textColor.withOpacity(0.1)),
+                      ),
+                      child: IconButton(
+                        padding: EdgeInsets.zero,
+                        icon: Icon(Icons.arrow_back_ios_new, color: textColor, size: 20),
+                        onPressed: () async {
+                          final shouldPop = await _showExitWarningDialog();
+                          if (shouldPop && mounted) {
+                            Navigator.of(context).pop();
+                          }
+                        },
+                      ),
                     ),
-                    child: IconButton(
-                      padding: EdgeInsets.zero,
-                      icon: Icon(Icons.arrow_back_ios_new, color: textColor, size: 20),
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                  ),
                   Text(
                     '${(_currentQuestionIndex + 1).toString().padLeft(2, '0')} аз ${questions.length.toString().padLeft(2, '0')}',
                     style: TextStyle(
@@ -865,6 +922,7 @@ class _TestQuizScreenState extends State<TestQuizScreen> {
           ],
         ),
       ),
+    ),
     );
   }
 }

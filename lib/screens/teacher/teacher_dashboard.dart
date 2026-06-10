@@ -23,9 +23,11 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
   List<dynamic> _students = [];
   List<dynamic> _tests = [];
   List<dynamic> _pendingAttempts = [];
+  List<dynamic> _paperTests = [];
   bool _isLoadingStudents = true;
   bool _isLoadingTests = true;
   bool _isLoadingAttempts = true;
+  bool _isLoadingPaper = true;
   final _emailController = TextEditingController();
 
   @override
@@ -35,6 +37,7 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
     _fetchStudents();
     _fetchTests();
     _fetchPendingAttempts();
+    _fetchPaperTests();
   }
 
   @override
@@ -42,6 +45,29 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
     _tabController.dispose();
     _emailController.dispose();
     super.dispose();
+  }
+
+  Future<void> _fetchPaperTests() async {
+    setState(() {
+      _isLoadingPaper = true;
+    });
+    try {
+      final response = await ApiService.get('/api/tests/paper');
+      if (response.statusCode == 200) {
+        setState(() {
+          _paperTests = jsonDecode(response.body);
+          _isLoadingPaper = false;
+        });
+      } else {
+        setState(() {
+          _isLoadingPaper = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isLoadingPaper = false;
+      });
+    }
   }
 
   String _cleanTitle(String title) {
@@ -879,18 +905,16 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
                     children: [
                       Row(
                         children: [
-                          GestureDetector(
-                            onTap: () => _pickAndUploadStudentAvatar(student['id']),
-                            child: Container(
-                              padding: const EdgeInsets.all(2),
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: isDarkMode ? Colors.white24 : const Color(0xFF1E7431).withOpacity(0.2),
-                                  width: 2,
-                                ),
+                          Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: isDarkMode ? Colors.white24 : const Color(0xFF1E7431).withOpacity(0.2),
+                                width: 2,
                               ),
-                              child: CircleAvatar(
+                            ),
+                            child: CircleAvatar(
                                 radius: 24,
                                 backgroundColor: isDarkMode ? Colors.white12 : const Color(0xFFEBF3ED),
                                 backgroundImage: student['imageUrl'] != null && student['imageUrl'].toString().isNotEmpty
@@ -907,7 +931,6 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
                                       ),
                               ),
                             ),
-                          ),
                           const SizedBox(width: 12),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1065,6 +1088,34 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
 
   Widget _buildTestsList() {
     final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
+
+    return DefaultTabController(
+      length: 2,
+      child: Column(
+        children: [
+          TabBar(
+            indicatorColor: isDarkMode ? const Color(0xFFA3E635) : const Color(0xFF1E7431),
+            labelColor: isDarkMode ? const Color(0xFFA3E635) : const Color(0xFF1E7431),
+            unselectedLabelColor: isDarkMode ? const Color(0xFF788C7D) : const Color(0xFF657367),
+            tabs: const [
+              Tab(text: 'Тестҳои онлайн'),
+              Tab(text: 'Тестҳои қоғазӣ'),
+            ],
+          ),
+          Expanded(
+            child: TabBarView(
+              children: [
+                _buildOnlineTestsTab(isDarkMode),
+                _buildPaperTestsTab(isDarkMode),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOnlineTestsTab(bool isDarkMode) {
     final textColor = isDarkMode ? Colors.white : Colors.black;
 
     if (_isLoadingTests) {
@@ -1087,44 +1138,48 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
                 ],
               ),
             )
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _tests.length,
-              itemBuilder: (context, index) {
-                final test = _tests[index];
-                final List questions = test['questions'] ?? [];
+          : RefreshIndicator(
+              onRefresh: _fetchTests,
+              color: isDarkMode ? const Color(0xFFA3E635) : const Color(0xFF1E7431),
+              child: ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: _tests.length,
+                itemBuilder: (context, index) {
+                  final test = _tests[index];
+                  final List questions = test['questions'] ?? [];
 
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: isDarkMode ? Theme.of(context).cardColor : Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isDarkMode ? Colors.white10 : const Color(0xFF1E7431).withOpacity(0.15),
-                    ),
-                    boxShadow: isDarkMode ? [] : [
-                      BoxShadow(
-                        color: const Color(0xFF228B22).withOpacity(0.04),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: isDarkMode ? Theme.of(context).cardColor : Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isDarkMode ? Colors.white10 : const Color(0xFF1E7431).withOpacity(0.15),
                       ),
-                    ],
-                  ),
-                  child: ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(
-                      _cleanTitle(test['title'] ?? ''),
-                      style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
+                      boxShadow: isDarkMode ? [] : [
+                        BoxShadow(
+                          color: const Color(0xFF228B22).withOpacity(0.04),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
                     ),
-                    subtitle: Text(
-                      '${questions.length} савол • ${test['description'] ?? "Имтиҳон"}',
-                      style: TextStyle(color: isDarkMode ? const Color(0xFF788C7D) : const Color(0xFF657367), fontSize: 13),
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(
+                        _cleanTitle(test['title'] ?? ''),
+                        style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Text(
+                        '${questions.length} савол • ${test['description'] ?? "Имтиҳон"}',
+                        style: TextStyle(color: isDarkMode ? const Color(0xFF788C7D) : const Color(0xFF657367), fontSize: 13),
+                      ),
+                      trailing: Icon(Icons.quiz, color: isDarkMode ? const Color(0xFFA3E635) : const Color(0xFF1E7431)),
                     ),
-                    trailing: Icon(Icons.quiz, color: isDarkMode ? const Color(0xFFA3E635) : const Color(0xFF1E7431)),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
       floatingActionButton: FloatingActionButton(
         heroTag: 'create_test_fab',
@@ -1140,6 +1195,274 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
         child: const Icon(Icons.add, color: Colors.white),
       ),
+    );
+  }
+
+  Widget _buildPaperTestsTab(bool isDarkMode) {
+    final textColor = isDarkMode ? Colors.white : Colors.black;
+
+    if (_isLoadingPaper) {
+      return Center(child: CircularProgressIndicator(color: isDarkMode ? const Color(0xFFA3E635) : const Color(0xFF1E7431)));
+    }
+
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: _paperTests.isEmpty
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.assignment_outlined, size: 64, color: isDarkMode ? const Color(0xFF788C7D) : const Color(0xFF657367)),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Ҳеҷ натиҷаи қоғазӣ ворид нашудааст',
+                    style: TextStyle(color: isDarkMode ? const Color(0xFF788C7D) : const Color(0xFF657367), fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            )
+          : RefreshIndicator(
+              onRefresh: _fetchPaperTests,
+              color: isDarkMode ? const Color(0xFFA3E635) : const Color(0xFF1E7431),
+              child: ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: _paperTests.length,
+                itemBuilder: (context, index) {
+                  final result = _paperTests[index];
+                  final studentName = result['studentName'] ?? '';
+                  final subject = result['subject'] ?? '';
+                  final score = result['score'] ?? 0;
+                  final dateStr = result['dateCreated'] != null
+                      ? DateTime.parse(result['dateCreated']).toLocal().toString().split(' ')[0]
+                      : '';
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: isDarkMode ? Theme.of(context).cardColor : Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isDarkMode ? Colors.white10 : const Color(0xFF1E7431).withOpacity(0.15),
+                      ),
+                      boxShadow: isDarkMode ? [] : [
+                        BoxShadow(
+                          color: const Color(0xFF228B22).withOpacity(0.04),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(
+                        studentName,
+                        style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Text(
+                        '$subject • Хол: $score балл • Сана: $dateStr',
+                        style: TextStyle(color: isDarkMode ? const Color(0xFF788C7D) : const Color(0xFF657367), fontSize: 13),
+                      ),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                        onPressed: () => _deletePaperTestResult(result['id']),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+      floatingActionButton: FloatingActionButton(
+        heroTag: 'create_paper_test_fab',
+        onPressed: _showAddPaperTestDialog,
+        backgroundColor: const Color(0xFF1E7431),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
+    );
+  }
+
+  Future<void> _deletePaperTestResult(int id) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Нест кардан'),
+        content: const Text('Оё мехоҳед ин натиҷаро нест кунед?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Бекор'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Нест кардан', style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      final response = await ApiService.delete('/api/tests/paper/$id');
+      if (response.statusCode == 200) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Натиҷа бомуваффақият нест карда шуд.'), backgroundColor: Colors.black),
+        );
+        _fetchPaperTests();
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Хатогӣ дар нест кардан'), backgroundColor: Colors.redAccent),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Хатогӣ дар нест кардан'), backgroundColor: Colors.redAccent),
+      );
+    }
+  }
+
+  void _showAddPaperTestDialog() async {
+    final isDarkMode = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
+    final textColor = isDarkMode ? Colors.white : Colors.black;
+    final backgroundColor = isDarkMode ? const Color(0xFF162218) : Colors.white;
+
+    final nameController = TextEditingController();
+    final subjectController = TextEditingController();
+    final scoreController = TextEditingController();
+    int? selectedStudentId;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              backgroundColor: backgroundColor,
+              title: Text('Сабти натиҷаи тести қоғазӣ', style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    DropdownButtonFormField<int>(
+                      dropdownColor: backgroundColor,
+                      decoration: InputDecoration(
+                        labelText: 'Пайваст ба донишҷӯ (ихтиёрӣ)',
+                        labelStyle: TextStyle(color: textColor.withOpacity(0.6)),
+                      ),
+                      value: selectedStudentId,
+                      items: _students.map<DropdownMenuItem<int>>((s) {
+                        return DropdownMenuItem<int>(
+                          value: s['id'] as int,
+                          child: Text(s['name'] ?? '', style: TextStyle(color: textColor)),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        setState(() {
+                          selectedStudentId = val;
+                          if (val != null) {
+                            final selected = _students.firstWhere((s) => s['id'] == val);
+                            nameController.text = selected['name'] ?? '';
+                          }
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: nameController,
+                      style: TextStyle(color: textColor),
+                      decoration: InputDecoration(
+                        labelText: 'Номи хонанда',
+                        labelStyle: TextStyle(color: textColor.withOpacity(0.6)),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: subjectController,
+                      style: TextStyle(color: textColor),
+                      decoration: InputDecoration(
+                        labelText: 'Фанни имтиҳон',
+                        labelStyle: TextStyle(color: textColor.withOpacity(0.6)),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: scoreController,
+                      keyboardType: TextInputType.number,
+                      style: TextStyle(color: textColor),
+                      decoration: InputDecoration(
+                        labelText: 'Балл (Хол)',
+                        labelStyle: TextStyle(color: textColor.withOpacity(0.6)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: Text('Бекор', style: TextStyle(color: textColor.withOpacity(0.6))),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    final name = nameController.text.trim();
+                    final subject = subjectController.text.trim();
+                    final scoreVal = scoreController.text.trim();
+
+                    if (name.isEmpty || subject.isEmpty || scoreVal.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Лутфан тамоми майдонҳоро пур кунед!')),
+                      );
+                      return;
+                    }
+
+                    final score = int.tryParse(scoreVal);
+                    if (score == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Балл бояд рақам бошад!')),
+                      );
+                      return;
+                    }
+
+                    Navigator.of(ctx).pop();
+
+                    try {
+                      final response = await ApiService.post('/api/tests/paper', {
+                        'studentName': name,
+                        'subject': subject,
+                        'score': score,
+                        'studentId': selectedStudentId,
+                      });
+
+                      if (response.statusCode == 200) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Натиҷа бомуваффақият сабт шуд.'),
+                            backgroundColor: Colors.black,
+                          ),
+                        );
+                        _fetchPaperTests();
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Хатогӣ дар сабти натиҷа'), backgroundColor: Colors.redAccent),
+                        );
+                      }
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Хатогӣ дар сабти натиҷа'), backgroundColor: Colors.redAccent),
+                      );
+                    }
+                  },
+                  child: const Text('Захира'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 

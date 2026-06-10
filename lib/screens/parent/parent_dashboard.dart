@@ -195,6 +195,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> with Sing
 
                 final stats = jsonDecode(snapshot.data!.body);
                 final attempts = stats['testAttempts'] as List;
+                final paperResults = stats['paperTestResults'] as List? ?? [];
 
                 return ListView(
                   controller: scrollController,
@@ -317,6 +318,76 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> with Sing
                                     ),
                                   ),
                                 ),
+                            ],
+                      }),
+
+                    const SizedBox(height: 24),
+                    Text(
+                      'Натиҷаҳои тести қоғазӣ',
+                      style: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 12),
+
+                    if (paperResults.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.all(24.0),
+                        child: Center(
+                          child: Text(
+                            'Натиҷаи тестҳои қоғазӣ мавҷуд нест',
+                            style: TextStyle(color: textColor.withOpacity(0.5)),
+                          ),
+                        ),
+                      )
+                    else
+                      ...paperResults.map((pr) {
+                        final subject = pr['subject'] ?? '';
+                        final score = pr['score'] ?? 0;
+                        final dateStr = pr['dateCreated'] != null 
+                            ? DateTime.parse(pr['dateCreated']).toLocal().toString().split(' ')[0] 
+                            : '';
+                        
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: textColor.withOpacity(0.03),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: textColor.withOpacity(0.1)),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      subject,
+                                      style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Сана: $dateStr',
+                                      style: TextStyle(color: textColor.withOpacity(0.4), fontSize: 12),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  '$score балл',
+                                  style: const TextStyle(
+                                    color: Colors.green,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                         );

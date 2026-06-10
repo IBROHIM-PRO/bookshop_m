@@ -5,6 +5,7 @@ import '../providers/auth_provider.dart';
 import '../providers/theme_provider.dart';
 import '../services/api_service.dart';
 import '../widgets/eduspace_logo.dart';
+import '../widgets/app_snackbar.dart';
 import 'register_screen.dart';
 import 'reader/reader_home.dart';
 import 'parent/parent_dashboard.dart';
@@ -109,12 +110,10 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(error),
-            backgroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
-            behavior: SnackBarBehavior.floating,
-          ),
+        AppSnackBar.show(
+          context,
+          message: error,
+          type: error.contains('суст') ? SnackBarType.warning : SnackBarType.error,
         );
       }
     } else {

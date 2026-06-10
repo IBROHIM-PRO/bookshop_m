@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -46,7 +47,7 @@ class ApiService {
   static Future<http.Response> get(String endpoint) async {
     final url = Uri.parse('$baseUrl$endpoint');
     final headers = await _getHeaders();
-    final response = await http.get(url, headers: headers);
+    final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 5));
     _checkResponse(response);
     return response;
   }
@@ -54,7 +55,7 @@ class ApiService {
   static Future<http.Response> post(String endpoint, Map<String, dynamic> body) async {
     final url = Uri.parse('$baseUrl$endpoint');
     final headers = await _getHeaders();
-    final response = await http.post(url, headers: headers, body: jsonEncode(body));
+    final response = await http.post(url, headers: headers, body: jsonEncode(body)).timeout(const Duration(seconds: 5));
     _checkResponse(response);
     return response;
   }
@@ -62,7 +63,7 @@ class ApiService {
   static Future<http.Response> put(String endpoint, Map<String, dynamic> body) async {
     final url = Uri.parse('$baseUrl$endpoint');
     final headers = await _getHeaders();
-    final response = await http.put(url, headers: headers, body: jsonEncode(body));
+    final response = await http.put(url, headers: headers, body: jsonEncode(body)).timeout(const Duration(seconds: 5));
     _checkResponse(response);
     return response;
   }
@@ -70,7 +71,7 @@ class ApiService {
   static Future<http.Response> delete(String endpoint) async {
     final url = Uri.parse('$baseUrl$endpoint');
     final headers = await _getHeaders();
-    final response = await http.delete(url, headers: headers);
+    final response = await http.delete(url, headers: headers).timeout(const Duration(seconds: 5));
     _checkResponse(response);
     return response;
   }
@@ -88,8 +89,8 @@ class ApiService {
       filePath,
       filename: fileName,
     ));
-    final streamedResponse = await request.send();
-    final response = await http.Response.fromStream(streamedResponse);
+    final streamedResponse = await request.send().timeout(const Duration(seconds: 30));
+    final response = await http.Response.fromStream(streamedResponse).timeout(const Duration(seconds: 30));
     _checkResponse(response);
     return response;
   }
@@ -108,8 +109,8 @@ class ApiService {
       filePath,
       filename: fileName,
     ));
-    final streamedResponse = await request.send();
-    final response = await http.Response.fromStream(streamedResponse);
+    final streamedResponse = await request.send().timeout(const Duration(seconds: 30));
+    final response = await http.Response.fromStream(streamedResponse).timeout(const Duration(seconds: 30));
     _checkResponse(response);
     return response;
   }

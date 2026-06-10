@@ -195,26 +195,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       ),
                               ),
                       ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: GestureDetector(
-                          onTap: _isUploading ? null : _pickAndUploadAvatar,
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: textColor,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: isDarkMode ? Colors.black : Colors.white, width: 2),
-                            ),
-                            child: Icon(
-                              Icons.camera_alt,
-                              color: isDarkMode ? Colors.black : Colors.white,
-                              size: 16,
-                            ),
-                          ),
-                        ),
-                      ),
+                      // Camera upload button removed per user request (admin only)
                     ],
                   ),
                   const SizedBox(height: 16),

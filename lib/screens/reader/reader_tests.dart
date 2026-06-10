@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/test_model.dart';
+import '../../models/paper_test_model.dart';
 import '../../services/api_service.dart';
 import '../../providers/theme_provider.dart';
 import 'test_quiz.dart';
@@ -17,6 +18,7 @@ class _ReaderTestsScreenState extends State<ReaderTestsScreen> with SingleTicker
   late TabController _tabController;
   List<TestModel> _tests = [];
   List<TestAttemptModel> _attempts = [];
+  List<PaperTestResultModel> _paperResults = [];
   bool _isLoading = true;
 
   static const int _maxRetries = 3;
@@ -25,7 +27,7 @@ class _ReaderTestsScreenState extends State<ReaderTestsScreen> with SingleTicker
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _fetchTestData();
   }
 
@@ -48,15 +50,18 @@ class _ReaderTestsScreenState extends State<ReaderTestsScreen> with SingleTicker
       try {
         final testsResponse = await ApiService.get('/api/tests');
         final attemptsResponse = await ApiService.get('/api/tests/attempts');
+        final paperResponse = await ApiService.get('/api/tests/paper');
 
-        if (testsResponse.statusCode == 200 && attemptsResponse.statusCode == 200) {
+        if (testsResponse.statusCode == 200 && attemptsResponse.statusCode == 200 && paperResponse.statusCode == 200) {
           final List testsJson = jsonDecode(testsResponse.body);
           final List attemptsJson = jsonDecode(attemptsResponse.body);
+          final List paperJson = jsonDecode(paperResponse.body);
 
           if (!mounted) return;
           setState(() {
             _tests = testsJson.map((t) => TestModel.fromJson(t)).toList();
             _attempts = attemptsJson.map((a) => TestAttemptModel.fromJson(a)).toList();
+            _paperResults = paperJson.map((p) => PaperTestResultModel.fromJson(p)).toList();
             _isLoading = false;
           });
           return;
@@ -258,6 +263,91 @@ class _ReaderTestsScreenState extends State<ReaderTestsScreen> with SingleTicker
     );
   }
 
+  Widget _buildPaperResultsList(Color textColor, bool isDarkMode) {
+    if (_paperResults.isEmpty) {
+      return Center(
+        child: Text(
+          'Натиҷаи тестҳои қоғазӣ мавҷуд нест',
+          style: TextStyle(color: textColor.withOpacity(0.6), fontSize: 16),
+        ),
+      );
+    }
+
+    final cardColor = Theme.of(context).cardColor;
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _paperResults.length,
+      itemBuilder: (context, index) {
+        final result = _paperResults[index];
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: isDarkMode ? Colors.white.withOpacity(0.08) : const Color(0xFFD1E2D5)),
+            boxShadow: isDarkMode ? [] : [
+              BoxShadow(
+                color: const Color(0xFF228B22).withOpacity(0.04),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      result.subject,
+                      style: TextStyle(
+                        color: textColor,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Сана: ${result.dateCreatedTajik}',
+                      style: TextStyle(color: textColor.withOpacity(0.4), fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '${result.score}',
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'балл',
+                    style: TextStyle(
+                      color: textColor.withOpacity(0.6),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
@@ -269,7 +359,6 @@ class _ReaderTestsScreenState extends State<ReaderTestsScreen> with SingleTicker
 
     return Column(
       children: [
-        // TabBar headers
         TabBar(
           controller: _tabController,
           indicatorColor: textColor,
@@ -278,6 +367,7 @@ class _ReaderTestsScreenState extends State<ReaderTestsScreen> with SingleTicker
           tabs: const [
             Tab(text: 'Тестҳои фаъол'),
             Tab(text: 'Натиҷаҳо'),
+            Tab(text: 'Тестҳои қоғазӣ'),
           ],
         ),
 
@@ -295,11 +385,27 @@ class _ReaderTestsScreenState extends State<ReaderTestsScreen> with SingleTicker
                 color: textColor,
                 child: _buildAttemptsList(textColor, isDarkMode),
               ),
+              RefreshIndicator(
+                onRefresh: _fetchTestData,
+                color: textColor,
+                child: _buildPaperResultsList(textColor, isDarkMode),
+              ),
             ],
           ),
         ),
       ],
     );
+  }
+}
+
+extension on PaperTestResultModel {
+  String get dateCreatedTajik {
+    final year = dateCreated.year;
+    final month = dateCreated.month.toString().padLeft(2, '0');
+    final day = dateCreated.day.toString().padLeft(2, '0');
+    final hour = dateCreated.hour.toString().padLeft(2, '0');
+    final minute = dateCreated.minute.toString().padLeft(2, '0');
+    return '$day.$month.$year $hour:$minute';
   }
 }
 

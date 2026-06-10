@@ -217,6 +217,7 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
     final attempts = _stats?['testAttempts'] as List? ?? [];
     final average = _stats?['averageScorePercentage'] ?? 0;
     final booksCount = _stats?['booksReadCount'] ?? 0;
+    final paperResults = _stats?['paperTestResults'] as List? ?? [];
 
     return Scaffold(
       backgroundColor: const Color(0xFF0D120E),
@@ -383,6 +384,74 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
                         color: isGraded 
                             ? (isPassed ? const Color(0xFFA3E635) : Colors.redAccent)
                             : Colors.amber,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+              );
+            }),
+
+          const SizedBox(height: 24),
+          const Text(
+            'Натиҷаҳои тести қоғазӣ',
+            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
+
+          if (paperResults.isEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              child: Center(
+                child: Column(
+                  children: [
+                    Icon(Icons.menu_book_outlined, size: 48, color: Colors.white.withOpacity(0.2)),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Натиҷаи тестҳои қоғазӣ мавҷуд нест',
+                      style: TextStyle(color: Colors.white.withOpacity(0.4)),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            ...paperResults.map((pr) {
+              final subject = pr['subject'] ?? '';
+              final score = pr['score'] ?? 0;
+              final dateStr = pr['dateCreated'] != null 
+                  ? DateTime.parse(pr['dateCreated']).toLocal().toString().split(' ')[0] 
+                  : '';
+              
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF162218),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFF2E3D32)),
+                ),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  title: Text(
+                    subject,
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Padding(
+                    padding: const EdgeInsets.only(top: 4.0),
+                    child: Text(
+                      'Сана: $dateStr',
+                      style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+                    ),
+                  ),
+                  trailing: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.teal.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '$score балл',
+                      style: const TextStyle(
+                        color: Color(0xFFA3E635),
                         fontWeight: FontWeight.bold,
                         fontSize: 13,
                       ),

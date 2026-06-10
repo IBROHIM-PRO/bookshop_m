@@ -167,6 +167,9 @@ class AuthProvider with ChangeNotifier {
     } catch (e) {
       _isLoading = false;
       notifyListeners();
+      if (e is TimeoutException) {
+        return 'Пайвастшавӣ суст аст. Лутфан интизор шавед...';
+      }
       return 'Пайвастшавӣ бо сервер номумкин аст';
     }
   }
@@ -205,6 +208,9 @@ class AuthProvider with ChangeNotifier {
     } catch (e) {
       _isLoading = false;
       notifyListeners();
+      if (e is TimeoutException) {
+        return 'Пайвастшавӣ суст аст. Лутфан интизор шавед...';
+      }
       return 'Пайвастшавӣ бо сервер номумкин аст';
     }
   }
