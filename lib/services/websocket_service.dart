@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:web_socket_channel/io.dart';
 
-typedef NotificationCallback = void Function(String title, String message);
+typedef NotificationCallback = void Function(String title, String message, String category);
 
 class WebSocketService {
   WebSocketChannel? _channel;
@@ -78,7 +78,8 @@ class WebSocketService {
             if (type != 'login_approval_request' && type != 'force_logout') {
               final title = data['title'] as String? ?? 'Паём';
               final msg = data['message'] as String? ?? '';
-              onNotification?.call(title, msg);
+              final category = data['category'] as String? ?? 'Academic';
+              onNotification?.call(title, msg, category);
             }
           } catch (e) {
             debugPrint('WebSocket message parse error: $e');

@@ -3,6 +3,7 @@ class NotificationModel {
   final String title;
   final String message;
   final String type;
+  final String category;
   final bool isRead;
   final DateTime dateCreated;
 
@@ -11,6 +12,7 @@ class NotificationModel {
     required this.title,
     required this.message,
     required this.type,
+    required this.category,
     required this.isRead,
     required this.dateCreated,
   });
@@ -31,6 +33,7 @@ class NotificationModel {
       title: json['title'] ?? '',
       message: json['message'] ?? '',
       type: json['type'] ?? 'General',
+      category: json['category'] ?? 'Academic',
       isRead: json['isRead'] ?? false,
       dateCreated: dt,
     );

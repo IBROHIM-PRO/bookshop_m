@@ -23,6 +23,15 @@ class _NotificationsFeedScreenState extends State<NotificationsFeedScreen> {
   static const int _maxRetries = 3;
   static const Duration _retryDelay = Duration(seconds: 1);
 
+  final List<Map<String, String>> _categories = [
+    {'key': 'All', 'label': 'Ҳама'},
+    {'key': 'Academic', 'label': 'Маориф'},
+    {'key': 'Commercial', 'label': 'Харидҳо'},
+    {'key': 'Marketing', 'label': 'Аксияҳо'},
+    {'key': 'Security', 'label': 'Амният'},
+  ];
+  String _selectedCategory = 'All';
+
   @override
   void initState() {
     super.initState();
@@ -34,21 +43,24 @@ class _NotificationsFeedScreenState extends State<NotificationsFeedScreen> {
     final user = Provider.of<AuthProvider>(context, listen: false).currentUser;
     if (user == null) return;
 
-    _wsService.onNotification = (title, message) {
+    _wsService.onNotification = (title, message, category) {
       if (!mounted) return;
-      setState(() {
-        _notifications.insert(
-          0,
-          NotificationModel(
-            id: -DateTime.now().millisecondsSinceEpoch,
-            title: title,
-            message: message,
-            type: user.role,
-            isRead: false,
-            dateCreated: DateTime.now(),
-          ),
-        );
-      });
+      if (_selectedCategory == 'All' || category == _selectedCategory) {
+        setState(() {
+          _notifications.insert(
+            0,
+            NotificationModel(
+              id: -DateTime.now().millisecondsSinceEpoch,
+              title: title,
+              message: message,
+              type: user.role,
+              category: category,
+              isRead: false,
+              dateCreated: DateTime.now(),
+            ),
+          );
+        });
+      }
       BadgeService().updateBadgeCount();
 
       final isDarkMode = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
@@ -110,7 +122,10 @@ class _NotificationsFeedScreenState extends State<NotificationsFeedScreen> {
     int attempt = 0;
     while (attempt < _maxRetries) {
       try {
-        final response = await ApiService.get('/api/notifications');
+        final String path = _selectedCategory == 'All' 
+            ? '/api/notifications' 
+            : '/api/notifications?category=$_selectedCategory';
+        final response = await ApiService.get(path);
         if (response.statusCode == 200) {
           final List jsonList = jsonDecode(response.body);
           if (!mounted) return;
@@ -119,7 +134,7 @@ class _NotificationsFeedScreenState extends State<NotificationsFeedScreen> {
                 jsonList.map((n) => NotificationModel.fromJson(n)).toList();
             
             // Filter out test/gibberish notifications containing 'вчаҷв' or 'уқуқ'
-            final filtered = mapped.where((n) {
+            _notifications = mapped.where((n) {
               final title = n.title.toLowerCase();
               final msg = n.message.toLowerCase();
               return !title.contains('вчаҷв') &&
@@ -127,27 +142,6 @@ class _NotificationsFeedScreenState extends State<NotificationsFeedScreen> {
                      !msg.contains('вчаҷв') &&
                      !msg.contains('уқуқ');
             }).toList();
-
-            // Prepend realistic system notifications
-            _notifications = [
-              NotificationModel(
-                id: 9999,
-                title: 'Тести нав бомуваффақият илова шуд',
-                message: 'Тести нав аз фанни "Забони Тоҷикӣ" барои синфи 5 омода аст. Шумо метавонед онро супоред.',
-                type: 'System',
-                isRead: false,
-                dateCreated: DateTime.now().subtract(const Duration(minutes: 15)),
-              ),
-              NotificationModel(
-                id: 9998,
-                title: 'Фармоиши шумо қабул шуд',
-                message: 'Фармоиши шумо барои хариди "Китоби Забони Тоҷикӣ" бомуваффақият қабул ва тасдиқ гардид.',
-                type: 'Order',
-                isRead: true,
-                dateCreated: DateTime.now().subtract(const Duration(hours: 2)),
-              ),
-              ...filtered,
-            ];
             _isLoading = false;
           });
           BadgeService().updateBadgeCount();
@@ -188,6 +182,7 @@ class _NotificationsFeedScreenState extends State<NotificationsFeedScreen> {
               title: old.title,
               message: old.message,
               type: old.type,
+              category: old.category,
               isRead: true,
               dateCreated: old.dateCreated,
             );
@@ -199,6 +194,48 @@ class _NotificationsFeedScreenState extends State<NotificationsFeedScreen> {
   }
 
   int get _unreadCount => _notifications.where((n) => !n.isRead).length;
+
+  String _getIconAsset(NotificationModel notification) {
+    final title = notification.title.toLowerCase();
+    final category = notification.category.toLowerCase();
+
+    if (category == 'academic') {
+      if (title.contains('нав')) {
+        return 'assets/notifications/test_assigned.png';
+      } else if (title.contains('супоридан') || title.contains('ҷавоб')) {
+        return 'assets/notifications/test_completed.png';
+      } else if (title.contains('натиҷа') || title.contains('қабул')) {
+        return 'assets/notifications/test_result.png';
+      } else if (title.contains('тафтиш') || title.contains('бозгардон')) {
+        return 'assets/notifications/academic_progress.png';
+      }
+      return 'assets/notifications/test_assigned.png';
+    } else if (category == 'commercial') {
+      if (title.contains('фармоиш')) {
+        return 'assets/notifications/order_created.png';
+      } else if (title.contains('дастрасӣ')) {
+        return 'assets/notifications/book_access_granted.png';
+      } else if (title.contains('пардохт') && title.contains('муваффақ')) {
+        return 'assets/notifications/payment_success.png';
+      } else if (title.contains('пардохт') && title.contains('хато')) {
+        return 'assets/notifications/payment_failed.png';
+      }
+      return 'assets/notifications/order_created.png';
+    } else if (category == 'marketing') {
+      if (title.contains('нав') || title.contains('илова')) {
+        return 'assets/notifications/new_arrival.png';
+      } else if (title.contains('аксия') || title.contains('пешниҳод') || title.contains('тахфиф')) {
+        return 'assets/notifications/promotion.png';
+      }
+      return 'assets/notifications/recommendation.png';
+    } else if (category == 'security') {
+      if (title.contains('ворид') || title.contains('дастгоҳ') || title.contains('сессия') || title.contains('амният')) {
+        return 'assets/notifications/security_alert.png';
+      }
+      return 'assets/notifications/system_alert.png';
+    }
+    return 'assets/notifications/system_alert.png';
+  }
 
   String _formatDateTime(DateTime dateTime) {
     final day = dateTime.day.toString().padLeft(2, '0');
@@ -215,44 +252,66 @@ class _NotificationsFeedScreenState extends State<NotificationsFeedScreen> {
     final textColor = isDarkMode ? Colors.white : Colors.black;
     final backgroundColor = isDarkMode ? Colors.black : Colors.white;
 
-    if (_isLoading) {
-      return Center(
-          child: CircularProgressIndicator(color: textColor));
-    }
-
     return Scaffold(
       backgroundColor: backgroundColor,
       body: Column(
         children: [
-          if (_unreadCount > 0)
-            Container(
-              margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: isDarkMode ? textColor.withOpacity(0.05) : const Color(0xFFEBF3ED),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                    color: isDarkMode ? textColor.withOpacity(0.2) : const Color(0xFFD1E2D5)),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.mark_email_unread,
-                      color: isDarkMode ? textColor : const Color(0xFF1E7431), size: 18),
-                  const SizedBox(width: 10),
-                  Text(
-                    '$_unreadCount паёми нахонда',
-                    style: TextStyle(
-                        color: isDarkMode ? textColor : const Color(0xFF1A1F1C),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: _categories.map((cat) {
+                final isSelected = _selectedCategory == cat['key'];
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: InkWell(
+                    onTap: () {
+                      if (_selectedCategory != cat['key']) {
+                        setState(() {
+                          _selectedCategory = cat['key']!;
+                          _isLoading = true;
+                        });
+                        _fetchNotifications();
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(20),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? const Color(0xFF1E7431)
+                            : (isDarkMode ? Colors.white.withOpacity(0.05) : const Color(0xFFF0F4F1)),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: isSelected
+                              ? const Color(0xFF1E7431)
+                              : (isDarkMode ? Colors.white.withOpacity(0.1) : const Color(0xFFD1E2D5)),
+                        ),
+                      ),
+                      child: Text(
+                        cat['label']!,
+                        style: TextStyle(
+                          color: isSelected
+                              ? Colors.white
+                              : (isDarkMode ? Colors.white.withOpacity(0.8) : const Color(0xFF1A1F1C)),
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
                   ),
-                ],
-              ),
+                );
+              }).toList(),
             ),
+          ),
 
           Expanded(
-            child: _notifications.isEmpty
+            child: _isLoading
+                ? Center(
+                    child: CircularProgressIndicator(color: textColor),
+                  )
+                : _notifications.isEmpty
                 ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -355,20 +414,13 @@ class _NotificationsFeedScreenState extends State<NotificationsFeedScreen> {
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: isDarkMode
-                                        ? (notification.isRead ? textColor.withOpacity(0.05) : textColor.withOpacity(0.1))
-                                        : const Color(0xFFEBF3ED),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(
-                                    Icons.notifications,
-                                    color: isDarkMode
-                                        ? (notification.isRead ? textColor.withOpacity(0.5) : textColor)
-                                        : const Color(0xFF1E7431),
-                                    size: 20,
+                                Opacity(
+                                  opacity: notification.isRead ? 0.6 : 1.0,
+                                  child: Image.asset(
+                                    _getIconAsset(notification),
+                                    width: 44,
+                                    height: 44,
+                                    fit: BoxFit.contain,
                                   ),
                                 ),
                                 const SizedBox(width: 14),

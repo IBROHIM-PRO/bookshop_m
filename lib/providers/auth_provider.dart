@@ -56,7 +56,7 @@ class AuthProvider with ChangeNotifier {
       }
     };
 
-    _wsService!.onNotification = (title, message) {
+    _wsService!.onNotification = (title, message, category) {
       LocalNotificationService().showNotification(
         title: title,
         body: message,
