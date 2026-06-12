@@ -193,7 +193,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
   Widget _buildHomeByRole(String? role) {
     if (role == 'Parent') return const ParentDashboardScreen();
-    if (role == 'Teacher') return const TeacherDashboardScreen();
+    if (role == 'Teacher') return TeacherDashboardScreen();
     return const ReaderHomeScreen();
   }
 

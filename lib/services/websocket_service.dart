@@ -4,13 +4,23 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:web_socket_channel/io.dart';
+import 'api_service.dart';
 
 typedef NotificationCallback = void Function(String title, String message, String category);
 
 class WebSocketService {
+  // Singleton pattern
+  static final WebSocketService _instance = WebSocketService._internal();
+  factory WebSocketService() => _instance;
+  WebSocketService._internal();
+
   WebSocketChannel? _channel;
   StreamSubscription? _subscription;
   bool _isConnected = false;
+
+  // Stream for broadcasting raw messages
+  final StreamController<Map<String, dynamic>> _messageController = StreamController<Map<String, dynamic>>.broadcast();
+  Stream<Map<String, dynamic>> get messageStream => _messageController.stream;
 
   // ✅ userId ва role нигоҳ медорем барои retry
   int? _userId;
@@ -18,6 +28,10 @@ class WebSocketService {
 
   NotificationCallback? onNotification;
   void Function(Map<String, dynamic> data)? onRawMessage;
+
+  void broadcastLocalMessage(Map<String, dynamic> data) {
+    _messageController.add(data);
+  }
 
   Timer? _retryTimer;
   int _retryCount = 0;
@@ -28,15 +42,7 @@ class WebSocketService {
   // ✅ Флаг барои пешгири аз reconnect баъд аз disconnect()
   bool _isDisposed = false;
 
-  static String get _wsBaseUrl {
-    if (kIsWeb) return 'ws://localhost:5179';
-    try {
-      //if (Platform.isAndroid) return 'ws://10.74.7.83:5179';
-      if (Platform.isAndroid) return 'ws://192.168.0.105:5179';
-    } catch (_) {}
-    //return 'ws://10.74.7.83:5179';
-    return 'ws://192.168.0.105:5179';
-  }
+  static String get _wsBaseUrl => ApiService.wsBaseUrl;
 
   bool get isConnected => _isConnected;
 
@@ -72,10 +78,15 @@ class WebSocketService {
           if (_isDisposed) return;
           try {
             final Map<String, dynamic> data = jsonDecode(message as String);
+            _messageController.add(data); // Send to stream
             onRawMessage?.call(data);
 
             final type = data['type'] as String?;
-            if (type != 'login_approval_request' && type != 'force_logout') {
+            if (type != 'login_approval_request' &&
+                type != 'force_logout' &&
+                type != 'chat_message' &&
+                type != 'chat_message_edit' &&
+                type != 'chat_message_delete') {
               final title = data['title'] as String? ?? 'Паём';
               final msg = data['message'] as String? ?? '';
               final category = data['category'] as String? ?? 'Academic';
@@ -113,6 +124,9 @@ class WebSocketService {
     _channel = null;
 
     if (_isDisposed) return; // ✅ disconnect() шуда буд — retry нашавад
+
+    // Switch active host to try fallback IP
+    ApiService.switchHost();
 
     // ✅ Retry бо userId ва role-и нигоҳдоштаем
     if (_retryCount < _maxRetries && _userId != null && _role != null) {

@@ -6,6 +6,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../login_screen.dart';
 import '../notifications_feed.dart';
+import '../chat/chat_list_screen.dart';
 
 class ParentDashboardScreen extends StatefulWidget {
   const ParentDashboardScreen({super.key});
@@ -18,7 +19,6 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> with Sing
   late TabController _tabController;
   List<dynamic> _children = [];
   bool _isLoading = true;
-  final _emailController = TextEditingController();
 
   @override
   void initState() {
@@ -30,7 +30,6 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> with Sing
   @override
   void dispose() {
     _tabController.dispose();
-    _emailController.dispose();
     super.dispose();
   }
 
@@ -55,110 +54,6 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> with Sing
         _isLoading = false;
       });
     }
-  }
-
-  void _linkChild() async {
-    final email = _emailController.text.trim();
-    if (email.isEmpty || !email.contains('@')) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Лутфан email-и дуруст ворид созед')),
-      );
-      return;
-    }
-
-    Navigator.of(context).pop(); // Close dialog
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      final response = await ApiService.post('/api/parent/link-child', {
-        'childEmail': email,
-      });
-
-      if (response.statusCode == 200) {
-        _emailController.clear();
-        _fetchChildren();
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Кӯдак бомуваффақият пайваст карда шуд.'), backgroundColor: Colors.black),
-        );
-      } else {
-        final err = jsonDecode(response.body);
-        setState(() {
-          _isLoading = false;
-        });
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(err['message'] ?? 'Хатогӣ дар пайвасткунии кӯдак'), backgroundColor: Colors.redAccent),
-        );
-      }
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Хатогӣ дар пайвастшавӣ ба сервер'), backgroundColor: Colors.redAccent),
-      );
-    }
-  }
-
-  void _showLinkChildDialog() {
-    final isDarkMode = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
-    final textColor = isDarkMode ? Colors.white : Colors.black;
-    final backgroundColor = isDarkMode ? Colors.black : Colors.white;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: backgroundColor,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: textColor.withOpacity(0.1)),
-        ),
-        title: Text('Пайваст кардани кӯдак', style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Почтаи электронии (email) кӯдаки худро, ки ҳамчун Хонанда ба қайд гирифта шудааст, ворид кунед:',
-              style: TextStyle(color: textColor.withOpacity(0.7), fontSize: 14),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _emailController,
-              keyboardType: TextInputType.emailAddress,
-              style: TextStyle(color: textColor),
-              decoration: InputDecoration(
-                hintText: 'Email-и хонанда',
-                hintStyle: TextStyle(color: textColor.withOpacity(0.4)),
-                filled: true,
-                fillColor: textColor.withOpacity(0.05),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: textColor.withOpacity(0.1)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: textColor, width: 2),
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text('Бекор кардан', style: TextStyle(color: textColor.withOpacity(0.6))),
-          ),
-          ElevatedButton(
-            onPressed: _linkChild,
-            child: const Text('Пайваст кардан'),
-          ),
-        ],
-      ),
-    );
   }
 
   void _showChildStats(int childId, String childName) async {
@@ -319,6 +214,8 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> with Sing
                                   ),
                                 ),
                             ],
+                          ),
+                        );
                       }),
 
                     const SizedBox(height: 24),
@@ -439,113 +336,120 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> with Sing
 
     if (_children.isEmpty) {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.child_care, size: 64, color: textColor.withOpacity(0.3)),
-            const SizedBox(height: 16),
-            Text(
-              'Ҳеҷ кӯдак пайваст карда нашудааст',
-              style: TextStyle(color: textColor.withOpacity(0.5), fontSize: 16),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: _showLinkChildDialog,
-              icon: Icon(Icons.add, color: isDarkMode ? Colors.black : Colors.white),
-              label: const Text('Пайваст кардани кӯдак'),
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.child_care, size: 64, color: textColor.withOpacity(0.3)),
+              const SizedBox(height: 16),
+              Text(
+                'Ҳеҷ кӯдак пайваст карда нашудааст',
+                style: TextStyle(color: textColor.withOpacity(0.5), fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Маълумоти кӯдак аз тарафи админ ворид ва таҳрир карда мешавад',
+                style: TextStyle(color: textColor.withOpacity(0.4), fontSize: 13),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       );
     }
 
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: _children.length,
-        itemBuilder: (context, index) {
-          final child = _children[index];
-          final List books = child['books'] ?? [];
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _children.length,
+      itemBuilder: (context, index) {
+        final child = _children[index];
+        final List books = child['books'] ?? [];
 
-          return GestureDetector(
-            onTap: () => _showChildStats(child['id'], child['name']),
-            child: Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: textColor.withOpacity(0.03),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: textColor.withOpacity(0.1)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          CircleAvatar(
-                            backgroundColor: textColor.withOpacity(0.1),
-                            child: Icon(Icons.person, color: textColor),
-                          ),
-                          const SizedBox(width: 12),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                child['name'],
-                                style: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.bold),
-                              ),
-                              Text(
-                                child['email'],
-                                style: TextStyle(color: textColor.withOpacity(0.4), fontSize: 13),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      Icon(Icons.arrow_forward_ios, color: textColor.withOpacity(0.3), size: 16),
-                    ],
-                  ),
-                  const Divider(height: 32, thickness: 1),
-                  Text(
-                    'Китобҳои дастрасшуда (${books.length}):',
-                    style: TextStyle(color: textColor.withOpacity(0.6), fontSize: 14, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  books.isEmpty
-                      ? Text('Ҳеҷ китоб дастрас нест.', style: TextStyle(color: textColor.withOpacity(0.3), fontSize: 13))
-                      : Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: books.map((b) {
-                            return Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: textColor.withOpacity(0.05),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: textColor.withOpacity(0.1)),
-                              ),
-                              child: Text(
-                                b['title'],
-                                style: TextStyle(color: textColor.withOpacity(0.8), fontSize: 12),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                ],
-              ),
+        return GestureDetector(
+          onTap: () => _showChildStats(child['id'], child['name']),
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: textColor.withOpacity(0.03),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: textColor.withOpacity(0.1)),
             ),
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showLinkChildDialog,
-        backgroundColor: textColor,
-        child: Icon(Icons.add, color: isDarkMode ? Colors.black : Colors.white),
-      ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 24,
+                          backgroundColor: isDarkMode ? Colors.white12 : const Color(0xFFEBF3ED),
+                          backgroundImage: child['imageUrl'] != null && child['imageUrl'].toString().isNotEmpty
+                              ? NetworkImage(ApiService.getFullImageUrl(child['imageUrl'].toString()))
+                              : null,
+                          child: child['imageUrl'] != null && child['imageUrl'].toString().isNotEmpty
+                              ? null
+                              : Text(
+                                  _getInitials(child['name'] ?? ''),
+                                  style: TextStyle(
+                                    color: isDarkMode ? Colors.white : const Color(0xFF1E7431),
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                        ),
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              child['name'],
+                              style: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.bold),
+                            ),
+                            Text(
+                              child['email'],
+                              style: TextStyle(color: textColor.withOpacity(0.4), fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    Icon(Icons.arrow_forward_ios, color: textColor.withOpacity(0.3), size: 16),
+                  ],
+                ),
+                const Divider(height: 32, thickness: 1),
+                Text(
+                  'Китобҳои дастрасшуда (${books.length}):',
+                  style: TextStyle(color: textColor.withOpacity(0.6), fontSize: 14, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                books.isEmpty
+                    ? Text('Ҳеҷ китоб дастрас нест.', style: TextStyle(color: textColor.withOpacity(0.3), fontSize: 13))
+                    : Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: books.map((b) {
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: textColor.withOpacity(0.05),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: textColor.withOpacity(0.1)),
+                            ),
+                            child: Text(
+                              b['title'],
+                              style: TextStyle(color: textColor.withOpacity(0.8), fontSize: 12),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -616,6 +520,27 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> with Sing
           const NotificationsFeedScreen(),
         ],
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const ChatListScreen()),
+          );
+        },
+        backgroundColor: isDarkMode ? const Color(0xFFA3E635) : const Color(0xFF1E7431),
+        child: Icon(
+          Icons.chat_bubble_outline,
+          color: isDarkMode ? Colors.black : Colors.white,
+        ),
+      ),
     );
+  }
+
+  String _getInitials(String name) {
+    if (name.isEmpty) return 'U';
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.length > 1) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return parts[0][0].toUpperCase();
   }
 }

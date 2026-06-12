@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart';
 import 'api_service.dart';
 import 'local_notification_service.dart';
 import 'badge_service.dart';
+import '../screens/chat/chat_detail_screen.dart';
+import 'websocket_service.dart';
 
 class FcmService {
   static final FcmService _instance = FcmService._internal();
@@ -36,6 +38,34 @@ class FcmService {
           // Listen to foreground notifications
           FirebaseMessaging.onMessage.listen((RemoteMessage message) {
             debugPrint('FCM Foreground message received: ${message.notification?.title}');
+            
+            if (message.data.isNotEmpty && message.data['type'] == 'chat_message') {
+              final data = message.data;
+              final Map<String, dynamic> formattedData = {
+                'type': 'chat_message',
+                'id': int.tryParse(data['id']?.toString() ?? '') ?? data['id'],
+                'senderId': int.tryParse(data['senderId']?.toString() ?? '') ?? data['senderId'],
+                'receiverId': int.tryParse(data['receiverId']?.toString() ?? '') ?? data['receiverId'],
+                'content': data['content'] ?? '',
+                'voiceUrl': data['voiceUrl']?.toString().isNotEmpty == true ? data['voiceUrl'] : null,
+                'replyToMessageId': data['replyToMessageId'] != null && data['replyToMessageId'].toString().isNotEmpty
+                    ? int.tryParse(data['replyToMessageId'].toString())
+                    : null,
+                'replyToMessageContent': data['replyToMessageContent'],
+                'dateCreated': data['dateCreated'] ?? DateTime.now().toUtc().toIso8601String(),
+              };
+
+              // Broadcast to active screen
+              WebSocketService().broadcastLocalMessage(formattedData);
+
+              final senderIdStr = data['senderId']?.toString();
+              final activeContactIdStr = ChatDetailScreen.activeContactId?.toString();
+              
+              if (activeContactIdStr != null && senderIdStr == activeContactIdStr) {
+                // Currently chatting with this sender, do not show notification popup/sound
+                return;
+              }
+            }
             
             if (message.notification != null) {
               LocalNotificationService().showNotification(

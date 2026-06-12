@@ -614,9 +614,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> with SingleTicker
   }
 
   String _getFullImageUrl(String? url) {
-    if (url == null || url.isEmpty) return '';
-    if (url.startsWith('http')) return url;
-    return '${ApiService.baseUrl}$url';
+    return ApiService.getFullImageUrl(url);
   }
 
   String _getInitials(String name) {

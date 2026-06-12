@@ -10,6 +10,7 @@ import '../notifications_feed.dart';
 import 'create_test_screen.dart';
 import 'student_results_screen.dart';
 import 'package:file_picker/file_picker.dart';
+import '../chat/chat_list_screen.dart';
 
 class TeacherDashboardScreen extends StatefulWidget {
   const TeacherDashboardScreen({super.key});
@@ -78,9 +79,7 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
   }
 
   String _getFullImageUrl(String? url) {
-    if (url == null || url.isEmpty) return '';
-    if (url.startsWith('http')) return url;
-    return '${ApiService.baseUrl}$url';
+    return ApiService.getFullImageUrl(url);
   }
 
   String _getInitials(String name) {
@@ -216,109 +215,7 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
     }
   }
 
-  void _linkStudent() async {
-    final email = _emailController.text.trim();
-    if (email.isEmpty || !email.contains('@')) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Лутфан email-и дуруст ворид созед')),
-      );
-      return;
-    }
 
-    Navigator.of(context).pop();
-    setState(() {
-      _isLoadingStudents = true;
-    });
-
-    try {
-      final response = await ApiService.post('/api/teacher/link-student', {
-        'studentEmail': email,
-      });
-
-      if (response.statusCode == 200) {
-        _emailController.clear();
-        _fetchStudents();
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Донишҷӯ бомуваффақият пайваст карда шуд.'), backgroundColor: Colors.black),
-        );
-      } else {
-        final err = jsonDecode(response.body);
-        setState(() {
-          _isLoadingStudents = false;
-        });
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(err['message'] ?? 'Хатогӣ дар пайвасткунии донишҷӯ'), backgroundColor: Colors.redAccent),
-        );
-      }
-    } catch (e) {
-      setState(() {
-        _isLoadingStudents = false;
-      });
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Хатогӣ дар пайвастшавӣ ба сервер'), backgroundColor: Colors.redAccent),
-      );
-    }
-  }
-
-  void _showLinkStudentDialog() {
-    final isDarkMode = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
-    final textColor = isDarkMode ? Colors.white : Colors.black;
-    final backgroundColor = isDarkMode ? Colors.black : Colors.white;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: backgroundColor,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: textColor.withOpacity(0.1)),
-        ),
-        title: Text('Пайваст кардани донишҷӯ', style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Почтаи электронии (email) донишҷӯро, ки ҳамчун Хонанда ба қайд гирифта шудааст, ворид кунед:',
-              style: TextStyle(color: textColor.withOpacity(0.7), fontSize: 14),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _emailController,
-              keyboardType: TextInputType.emailAddress,
-              style: TextStyle(color: textColor),
-              decoration: InputDecoration(
-                hintText: 'Email-и хонанда',
-                hintStyle: TextStyle(color: textColor.withOpacity(0.4)),
-                filled: true,
-                fillColor: textColor.withOpacity(0.05),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: textColor.withOpacity(0.1)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: textColor, width: 2),
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text('Бекор кардан', style: TextStyle(color: textColor.withOpacity(0.6))),
-          ),
-          ElevatedButton(
-            onPressed: _linkStudent,
-            child: const Text('Пайваст кардан'),
-          ),
-        ],
-      ),
-    );
-  }
 
   void _showStudentStats(int studentId, String studentName) async {
     final isDarkMode = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
@@ -837,22 +734,25 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
 
     if (_students.isEmpty) {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.people_outline, size: 64, color: textColor.withOpacity(0.3)),
-            const SizedBox(height: 16),
-            Text(
-              'Ҳеҷ донишҷӯ пайваст карда нашудааст',
-              style: TextStyle(color: textColor.withOpacity(0.5), fontSize: 16),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: _showLinkStudentDialog,
-              icon: Icon(Icons.add, color: isDarkMode ? Colors.black : Colors.white),
-              label: const Text('Пайваст кардани донишҷӯ'),
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.people_outline, size: 64, color: textColor.withOpacity(0.3)),
+              const SizedBox(height: 16),
+              Text(
+                'Ҳеҷ донишҷӯ пайваст карда нашудааст',
+                style: TextStyle(color: textColor.withOpacity(0.5), fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Пайвасткунии хонандагон танҳо аз тарафи админ иҷро карда мешавад',
+                style: TextStyle(color: textColor.withOpacity(0.4), fontSize: 13),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -983,12 +883,6 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
             ),
           );
         },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showLinkStudentDialog,
-        backgroundColor: const Color(0xFF1E7431),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
-        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }
@@ -1511,6 +1405,14 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
           ],
         ),
         actions: [
+          IconButton(
+            icon: Icon(Icons.chat_bubble_outline, color: textColor),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ChatListScreen()),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.redAccent),
             onPressed: _logout,

@@ -6,12 +6,14 @@ class StudentResultsScreen extends StatefulWidget {
   final int studentId;
   final String studentName;
   final String studentEmail;
+  final String? studentImageUrl;
 
   const StudentResultsScreen({
     super.key,
     required this.studentId,
     required this.studentName,
     required this.studentEmail,
+    this.studentImageUrl,
   });
 
   @override
@@ -244,7 +246,19 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
                     CircleAvatar(
                       radius: 28,
                       backgroundColor: Colors.white.withOpacity(0.1),
-                      child: const Icon(Icons.person, color: Colors.white, size: 28),
+                      backgroundImage: widget.studentImageUrl != null && widget.studentImageUrl!.isNotEmpty
+                          ? NetworkImage(ApiService.getFullImageUrl(widget.studentImageUrl))
+                          : null,
+                      child: widget.studentImageUrl != null && widget.studentImageUrl!.isNotEmpty
+                          ? null
+                          : Text(
+                              _getInitials(widget.studentName),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                              ),
+                            ),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -388,6 +402,8 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
                         fontSize: 13,
                       ),
                     ),
+                  ),
+                ),
               );
             }),
 
@@ -489,5 +505,14 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
         ],
       ),
     );
+  }
+
+  String _getInitials(String name) {
+    if (name.isEmpty) return 'U';
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.length > 1) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return parts[0][0].toUpperCase();
   }
 }
