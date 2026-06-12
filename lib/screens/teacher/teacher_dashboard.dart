@@ -11,6 +11,8 @@ import 'create_test_screen.dart';
 import 'student_results_screen.dart';
 import 'package:file_picker/file_picker.dart';
 import '../chat/chat_list_screen.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class TeacherDashboardScreen extends StatefulWidget {
   const TeacherDashboardScreen({super.key});
@@ -21,6 +23,7 @@ class TeacherDashboardScreen extends StatefulWidget {
 
 class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  int _selectedIndex = 1;
   List<dynamic> _students = [];
   List<dynamic> _tests = [];
   List<dynamic> _pendingAttempts = [];
@@ -34,7 +37,14 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 3, vsync: this, initialIndex: 1);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        setState(() {
+          _selectedIndex = _tabController.index;
+        });
+      }
+    });
     _fetchStudents();
     _fetchTests();
     _fetchPendingAttempts();
@@ -670,9 +680,7 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
                                             padding: const EdgeInsets.only(top: 4.0),
                                             child: ElevatedButton.icon(
                                               onPressed: () async {
-                                                final fileUrl = studentAnswer.startsWith('http') 
-                                                    ? studentAnswer 
-                                                    : '${ApiService.baseUrl}$studentAnswer';
+                                                final fileUrl = ApiService.getFullImageUrl(studentAnswer);
                                                 final uri = Uri.parse(fileUrl);
                                                 if (await canLaunchUrl(uri)) {
                                                   await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -764,7 +772,6 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
         itemCount: _students.length,
         itemBuilder: (context, index) {
           final student = _students[index];
-          final List books = student['books'] ?? [];
 
           return GestureDetector(
             onTap: () {
@@ -818,7 +825,7 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
                                 radius: 24,
                                 backgroundColor: isDarkMode ? Colors.white12 : const Color(0xFFEBF3ED),
                                 backgroundImage: student['imageUrl'] != null && student['imageUrl'].toString().isNotEmpty
-                                    ? NetworkImage(_getFullImageUrl(student['imageUrl'].toString()))
+                                    ? CachedNetworkImageProvider(_getFullImageUrl(student['imageUrl'].toString()))
                                     : null,
                                 child: student['imageUrl'] != null && student['imageUrl'].toString().isNotEmpty
                                     ? null
@@ -840,7 +847,7 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
                                 style: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.bold),
                               ),
                               Text(
-                                student['email'],
+                                student['groupName']?.toString().isNotEmpty == true ? student['groupName'] : (student['email'] ?? 'Бе гурӯҳ'),
                                 style: TextStyle(color: textColor.withOpacity(0.4), fontSize: 13),
                               ),
                             ],
@@ -850,34 +857,6 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
                       Icon(Icons.arrow_forward_ios, color: textColor.withOpacity(0.3), size: 16),
                     ],
                   ),
-                  const Divider(height: 32, thickness: 1),
-                  Text(
-                    'Китобҳои дастрасшуда (${books.length}):',
-                    style: TextStyle(color: textColor.withOpacity(0.6), fontSize: 14, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  books.isEmpty
-                      ? Text('Ҳеҷ китоб дастрас нест.', style: TextStyle(color: textColor.withOpacity(0.3), fontSize: 13))
-                      : Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: books.map((b) {
-                            return Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: isDarkMode ? Colors.white.withOpacity(0.05) : const Color(0xFFEBF3ED),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: isDarkMode ? Colors.white10 : const Color(0xFF1E7431).withOpacity(0.15),
-                                ),
-                              ),
-                              child: Text(
-                                _cleanTitle(b['title'] ?? ''),
-                                style: TextStyle(color: isDarkMode ? textColor.withOpacity(0.8) : const Color(0xFF1E7431), fontSize: 12, fontWeight: FontWeight.bold),
-                              ),
-                            );
-                          }).toList(),
-                        ),
                 ],
               ),
             ),
@@ -1069,7 +1048,25 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
                         '${questions.length} савол • ${test['description'] ?? "Имтиҳон"}',
                         style: TextStyle(color: isDarkMode ? const Color(0xFF788C7D) : const Color(0xFF657367), fontSize: 13),
                       ),
-                      trailing: Icon(Icons.quiz, color: isDarkMode ? const Color(0xFFA3E635) : const Color(0xFF1E7431)),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.edit, color: Colors.blueAccent),
+                            onPressed: () async {
+                              final res = await Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => CreateTestScreen(testId: test['id']),
+                                ),
+                              );
+                              if (res == true) {
+                                _fetchTests();
+                              }
+                            },
+                          ),
+                          Icon(Icons.quiz, color: isDarkMode ? const Color(0xFFA3E635) : const Color(0xFF1E7431)),
+                        ],
+                      ),
                     ),
                   );
                 },
@@ -1157,9 +1154,9 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
                         '$subject • Хол: $score балл • Сана: $dateStr',
                         style: TextStyle(color: isDarkMode ? const Color(0xFF788C7D) : const Color(0xFF657367), fontSize: 13),
                       ),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                        onPressed: () => _deletePaperTestResult(result['id']),
+                      trailing: Icon(
+                        Icons.assignment, 
+                        color: isDarkMode ? const Color(0xFFA3E635) : const Color(0xFF1E7431)
                       ),
                     ),
                   );
@@ -1377,7 +1374,7 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
 
     if (_isLoadingStudents || _isLoadingTests || _isLoadingAttempts) {
       return Scaffold(
-        backgroundColor: isDarkMode ? const Color(0xFF0D120E) : const Color(0xFFEBF3ED),
+        backgroundColor: isDarkMode ? const Color(0xFF0D120E) : const Color(0xFFF1F8F4),
         body: Center(
           child: CircularProgressIndicator(
             color: isDarkMode ? const Color(0xFFA3E635) : const Color(0xFF1E7431),
@@ -1387,9 +1384,9 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
     }
 
     return Scaffold(
-      backgroundColor: isDarkMode ? const Color(0xFF0D120E) : const Color(0xFFEBF3ED),
+      backgroundColor: isDarkMode ? const Color(0xFF0D120E) : const Color(0xFFF1F8F4),
       appBar: AppBar(
-        backgroundColor: isDarkMode ? const Color(0xFF162218) : Colors.white,
+        backgroundColor: isDarkMode ? Colors.black : Colors.white,
         elevation: 0,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1406,11 +1403,21 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.chat_bubble_outline, color: textColor),
+            icon: SvgPicture.asset(
+              'assets/logo/logoheader/Group 44375.svg',
+              height: 24,
+            ),
             onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const ChatListScreen()),
-              );
+              Navigator.of(context).push(MaterialPageRoute(builder: (_) => ChatListScreen()));
+            },
+          ),
+          IconButton(
+            icon: SvgPicture.asset(
+              'assets/logo/logoheader/Frame 1984078266.svg',
+              height: 28,
+            ),
+            onPressed: () {
+              Navigator.of(context).push(MaterialPageRoute(builder: (_) => const NotificationsFeedScreen()));
             },
           ),
           IconButton(
@@ -1418,52 +1425,95 @@ class _TeacherDashboardScreenState extends State<TeacherDashboardScreen> with Si
             onPressed: _logout,
           ),
         ],
-        bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          tabAlignment: TabAlignment.start,
-          indicatorColor: isDarkMode ? const Color(0xFFA3E635) : const Color(0xFF1E7431),
-          labelColor: isDarkMode ? const Color(0xFFA3E635) : const Color(0xFF1E7431),
-          unselectedLabelColor: isDarkMode ? const Color(0xFF788C7D) : const Color(0xFF657367),
-          tabs: [
-            const Tab(text: 'Донишҷӯён'),
-            const Tab(text: 'Тестҳо'),
-            Tab(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text('Тафтиш'),
-                  if (_pendingAttempts.isNotEmpty)
-                    Container(
-                      margin: const EdgeInsets.only(left: 6),
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: isDarkMode ? const Color(0xFFA3E635) : const Color(0xFF1E7431),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        '${_pendingAttempts.length}',
-                        style: TextStyle(
-                          color: isDarkMode ? const Color(0xFF0D120E) : Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            const Tab(text: 'Паёмҳо'),
-          ],
-        ),
       ),
       body: TabBarView(
         controller: _tabController,
         children: [
           _buildStudentsList(),
-          _buildTestsList(),
           _buildGradingList(),
-          const NotificationsFeedScreen(),
+          _buildTestsList(),
+        ],
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: (index) {
+          setState(() {
+            _selectedIndex = index;
+            _tabController.animateTo(index);
+          });
+        },
+        backgroundColor: isDarkMode ? Colors.black : Colors.white,
+        selectedItemColor: const Color(0xFF1E7431),
+        unselectedItemColor: isDarkMode ? const Color(0xFF788C7D) : const Color(0xFF657367),
+        showSelectedLabels: true,
+        showUnselectedLabels: true,
+        type: BottomNavigationBarType.fixed,
+        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+        unselectedLabelStyle: const TextStyle(fontSize: 12),
+        items: [
+          BottomNavigationBarItem(
+            icon: Image.asset(
+              'assets/logo/teacher_grading.png',
+              height: 24,
+              color: isDarkMode ? const Color(0xFF788C7D) : const Color(0xFF657367),
+              colorBlendMode: BlendMode.srcIn,
+            ),
+            activeIcon: Image.asset(
+              'assets/logo/teacher_grading.png',
+              height: 24,
+              color: const Color(0xFF1E7431),
+              colorBlendMode: BlendMode.srcIn,
+            ),
+            label: 'Студентҳо',
+          ),
+          BottomNavigationBarItem(
+            icon: Badge(
+              label: Text('${_pendingAttempts.length}'),
+              isLabelVisible: _pendingAttempts.isNotEmpty,
+              backgroundColor: const Color(0xFF1E7431),
+              child: SvgPicture.asset(
+                'assets/logo/teacher_tests.svg',
+                height: 24,
+                colorFilter: ColorFilter.mode(
+                  isDarkMode ? const Color(0xFF788C7D) : const Color(0xFF657367),
+                  BlendMode.srcIn,
+                ),
+              ),
+            ),
+            activeIcon: Badge(
+              label: Text('${_pendingAttempts.length}'),
+              isLabelVisible: _pendingAttempts.isNotEmpty,
+              backgroundColor: const Color(0xFF1E7431),
+              child: SvgPicture.asset(
+                'assets/logo/teacher_tests.svg',
+                height: 24,
+                colorFilter: const ColorFilter.mode(
+                  Color(0xFF1E7431),
+                  BlendMode.srcIn,
+                ),
+              ),
+            ),
+            label: 'Тафтиш',
+          ),
+          BottomNavigationBarItem(
+            icon: SvgPicture.asset(
+              'assets/logo/teacher_students.svg',
+              height: 24,
+              colorFilter: ColorFilter.mode(
+                isDarkMode ? const Color(0xFF788C7D) : const Color(0xFF657367),
+                BlendMode.srcIn,
+              ),
+            ),
+            activeIcon: SvgPicture.asset(
+              'assets/logo/teacher_students.svg',
+              height: 24,
+              colorFilter: const ColorFilter.mode(
+                Color(0xFF1E7431),
+                BlendMode.srcIn,
+              ),
+            ),
+            label: 'Тестҳо',
+          ),
         ],
       ),
     );

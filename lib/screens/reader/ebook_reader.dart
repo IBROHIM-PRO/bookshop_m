@@ -128,7 +128,7 @@ class _EbookReaderScreenState extends State<EbookReaderScreen> {
   Widget build(BuildContext context) {
     final bgColor = _isDarkMode ? const Color(0xFF0F0C20) : const Color(0xFFF9F6EE);
     final textColor = _isDarkMode ? Colors.white.withOpacity(0.9) : const Color(0xFF1C1917);
-    final appBarColor = _isDarkMode ? const Color(0xFF15102A) : const Color(0xFFE2E2D5);
+    final appBarColor = _isDarkMode ? Colors.black : Colors.white;
 
     if (_isLoading) {
       return Scaffold(

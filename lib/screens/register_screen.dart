@@ -59,7 +59,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final isLoading = Provider.of<AuthProvider>(context).isLoading;
     final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
     final textColor = isDarkMode ? Colors.white : Colors.black;
-    final backgroundColor = isDarkMode ? Colors.black : Colors.white;
+    final backgroundColor = isDarkMode ? Colors.black : const Color(0xFFF1F8F4);
 
     return Scaffold(
       backgroundColor: backgroundColor,

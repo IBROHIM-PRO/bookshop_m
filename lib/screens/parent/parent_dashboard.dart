@@ -7,6 +7,8 @@ import '../../providers/theme_provider.dart';
 import '../login_screen.dart';
 import '../notifications_feed.dart';
 import '../chat/chat_list_screen.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class ParentDashboardScreen extends StatefulWidget {
   const ParentDashboardScreen({super.key});
@@ -15,22 +17,14 @@ class ParentDashboardScreen extends StatefulWidget {
   State<ParentDashboardScreen> createState() => _ParentDashboardScreenState();
 }
 
-class _ParentDashboardScreenState extends State<ParentDashboardScreen> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
   List<dynamic> _children = [];
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
     _fetchChildren();
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
   }
 
   Future<void> _fetchChildren() async {
@@ -364,7 +358,6 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> with Sing
       itemCount: _children.length,
       itemBuilder: (context, index) {
         final child = _children[index];
-        final List books = child['books'] ?? [];
 
         return GestureDetector(
           onTap: () => _showChildStats(child['id'], child['name']),
@@ -388,7 +381,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> with Sing
                           radius: 24,
                           backgroundColor: isDarkMode ? Colors.white12 : const Color(0xFFEBF3ED),
                           backgroundImage: child['imageUrl'] != null && child['imageUrl'].toString().isNotEmpty
-                              ? NetworkImage(ApiService.getFullImageUrl(child['imageUrl'].toString()))
+                              ? CachedNetworkImageProvider(ApiService.getFullImageUrl(child['imageUrl'].toString()))
                               : null,
                           child: child['imageUrl'] != null && child['imageUrl'].toString().isNotEmpty
                               ? null
@@ -419,32 +412,6 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> with Sing
                     Icon(Icons.arrow_forward_ios, color: textColor.withOpacity(0.3), size: 16),
                   ],
                 ),
-                const Divider(height: 32, thickness: 1),
-                Text(
-                  'Китобҳои дастрасшуда (${books.length}):',
-                  style: TextStyle(color: textColor.withOpacity(0.6), fontSize: 14, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                books.isEmpty
-                    ? Text('Ҳеҷ китоб дастрас нест.', style: TextStyle(color: textColor.withOpacity(0.3), fontSize: 13))
-                    : Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: books.map((b) {
-                          return Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: textColor.withOpacity(0.05),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: textColor.withOpacity(0.1)),
-                            ),
-                            child: Text(
-                              b['title'],
-                              style: TextStyle(color: textColor.withOpacity(0.8), fontSize: 12),
-                            ),
-                          );
-                        }).toList(),
-                      ),
               ],
             ),
           ),
@@ -481,7 +448,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> with Sing
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: theme.appBarTheme.backgroundColor,
+        backgroundColor: isDarkMode ? Colors.black : Colors.white,
         elevation: 0,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -498,40 +465,30 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> with Sing
         ),
         actions: [
           IconButton(
+            icon: SvgPicture.asset(
+              'assets/logo/logoheader/Group 44375.svg',
+              height: 24,
+            ),
+            onPressed: () {
+              Navigator.of(context).push(MaterialPageRoute(builder: (_) => ChatListScreen()));
+            },
+          ),
+          IconButton(
+            icon: SvgPicture.asset(
+              'assets/logo/logoheader/Frame 1984078266.svg',
+              height: 28,
+            ),
+            onPressed: () {
+              Navigator.of(context).push(MaterialPageRoute(builder: (_) => const NotificationsFeedScreen()));
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.logout, color: Colors.redAccent),
             onPressed: _logout,
           ),
         ],
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: textColor,
-          labelColor: textColor,
-          unselectedLabelColor: textColor.withOpacity(0.4),
-          tabs: const [
-            Tab(text: 'Кӯдакони ман'),
-            Tab(text: 'Паёмҳо'),
-          ],
-        ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildChildrenList(),
-          const NotificationsFeedScreen(),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const ChatListScreen()),
-          );
-        },
-        backgroundColor: isDarkMode ? const Color(0xFFA3E635) : const Color(0xFF1E7431),
-        child: Icon(
-          Icons.chat_bubble_outline,
-          color: isDarkMode ? Colors.black : Colors.white,
-        ),
-      ),
+      body: _buildChildrenList(),
     );
   }
 

@@ -1,9 +1,13 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../services/api_service.dart';
 
 class CreateTestScreen extends StatefulWidget {
-  const CreateTestScreen({super.key});
+  final int? testId;
+  const CreateTestScreen({super.key, this.testId});
 
   @override
   State<CreateTestScreen> createState() => _CreateTestScreenState();
@@ -16,11 +20,59 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
   
   final List<Map<String, dynamic>> _questions = [];
   bool _isSaving = false;
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _addQuestion(); // Start with one empty question template
+    if (widget.testId != null) {
+      _loadTestDetails();
+    } else {
+      _addQuestion(); // Start with one empty question template
+    }
+  }
+
+  Future<void> _loadTestDetails() async {
+    setState(() {
+      _isLoading = true;
+    });
+    try {
+      final response = await ApiService.get('/api/tests/${widget.testId}');
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        _titleController.text = data['title'] ?? '';
+        _descriptionController.text = data['description'] ?? '';
+        final qList = data['questions'] as List? ?? [];
+        setState(() {
+          _questions.clear();
+          for (var q in qList) {
+            _questions.add({
+              'id': q['id'],
+              'questionText': q['questionText'] ?? '',
+              'questionType': q['questionType'] ?? 'Single',
+              'points': q['points'] ?? 10,
+              'optionA': q['optionA'] ?? '',
+              'optionB': q['optionB'] ?? '',
+              'optionC': q['optionC'] ?? '',
+              'optionD': q['optionD'] ?? '',
+              'correctOption': q['correctOption'] ?? 'A',
+              'imageUrl': q['imageUrl'] ?? '',
+            });
+          }
+          _isLoading = false;
+        });
+      } else {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Хатогӣ дар боркунии маълумоти тест')),
+        );
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Хатогӣ дар пайвастшавӣ ба сервер')),
+      );
+    }
   }
 
   @override
@@ -30,22 +82,22 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
     super.dispose();
   }
 
-  InputDecoration _inputDecoration(String label, {String? hint}) {
+  InputDecoration _inputDecoration(String label, {String? hint, bool isDarkMode = true}) {
     return InputDecoration(
       labelText: label,
-      labelStyle: const TextStyle(color: Color(0xFF788C7D), fontSize: 14),
+      labelStyle: TextStyle(color: isDarkMode ? const Color(0xFF788C7D) : const Color(0xFF6B7280), fontSize: 14),
       hintText: hint,
-      hintStyle: const TextStyle(color: Color(0xFF788C7D), fontSize: 13),
+      hintStyle: TextStyle(color: isDarkMode ? const Color(0xFF788C7D) : const Color(0xFF9CA3AF), fontSize: 13),
       filled: true,
-      fillColor: const Color(0xFF1A241D),
+      fillColor: isDarkMode ? const Color(0xFF1A241D) : const Color(0xFFF9FAFB),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFF2E3D32)),
+        borderSide: BorderSide(color: isDarkMode ? const Color(0xFF2E3D32) : const Color(0xFFD1D5DB)),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFF2E3D32)),
+        borderSide: BorderSide(color: isDarkMode ? const Color(0xFF2E3D32) : const Color(0xFFD1D5DB)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
@@ -143,6 +195,7 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
         final isClosed = q['questionType'] == 'Closed';
         final isTrueFalse = q['questionType'] == 'TrueFalse';
         return {
+          'id': q['id'],
           'questionText': q['questionText'],
           'questionType': q['questionType'],
           'points': q['points'],
@@ -157,11 +210,17 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
     };
 
     try {
-      final response = await ApiService.post('/api/tests', payload);
+      final response = widget.testId != null
+          ? await ApiService.put('/api/tests/${widget.testId}', payload)
+          : await ApiService.post('/api/tests', payload);
+          
       if (response.statusCode == 200 || response.statusCode == 201) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Тест бомуваффақият сохта шуд.'), backgroundColor: Colors.teal),
+          SnackBar(
+            content: Text(widget.testId != null ? 'Тест бомуваффақият таҳрир шуд.' : 'Тест бомуваффақият сохта шуд.'), 
+            backgroundColor: Colors.teal
+          ),
         );
         Navigator.of(context).pop(true); // Return success
       } else {
@@ -183,13 +242,240 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
     }
   }
 
+  Future<void> _uploadQuestionImage(Map<String, dynamic> q, String path, String name) async {
+    try {
+      setState(() {
+        _isSaving = true;
+      });
+      
+      final response = await ApiService.uploadFile(path, name);
+      if (response.statusCode == 200) {
+        final resData = jsonDecode(response.body);
+        final fileUrl = resData['url'] as String?;
+        if (fileUrl != null) {
+          setState(() {
+            q['imageUrl'] = fileUrl;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Расм бомуваффақият боргузорӣ шуд!'), backgroundColor: Colors.teal),
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Хатогӣ дар боргузории расм'), backgroundColor: Colors.redAccent),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Хатогӣ: $e'), backgroundColor: Colors.redAccent),
+      );
+    } finally {
+      setState(() {
+        _isSaving = false;
+      });
+    }
+  }
+
+  void _showImageSourceBottomSheet(Map<String, dynamic> q, Color textColor, bool isDarkMode) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: isDarkMode ? const Color(0xFF161E18) : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(28),
+          topRight: Radius.circular(28),
+        ),
+      ),
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Header row
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: Icon(Icons.close, color: textColor),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                      Expanded(
+                        child: Center(
+                          child: Text(
+                            'Воридкунии расм',
+                            style: TextStyle(
+                              color: textColor,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 48), // Spacer to balance the close button
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Camera option
+                _buildOptionRow(
+                  context: context,
+                  icon: Icons.camera_alt_outlined,
+                  title: 'Камера',
+                  textColor: textColor,
+                  isDarkMode: isDarkMode,
+                  onTap: () async {
+                    Navigator.pop(context);
+                    final picker = ImagePicker();
+                    final XFile? image = await picker.pickImage(source: ImageSource.camera);
+                    if (image != null) {
+                      _uploadQuestionImage(q, image.path, image.name);
+                    }
+                  },
+                ),
+                Divider(
+                  height: 1,
+                  indent: 76,
+                  color: isDarkMode ? Colors.white12 : Colors.grey.shade200,
+                ),
+
+                // Documents option
+                _buildOptionRow(
+                  context: context,
+                  icon: Icons.insert_drive_file_outlined,
+                  title: 'Ҳуҷҷатҳо',
+                  subtitle: 'Интихоби файлҳо',
+                  textColor: textColor,
+                  isDarkMode: isDarkMode,
+                  onTap: () async {
+                    Navigator.pop(context);
+                    final result = await FilePicker.pickFiles(type: FileType.image);
+                    if (result != null && result.files.single.path != null) {
+                      _uploadQuestionImage(q, result.files.single.path!, result.files.single.name);
+                    }
+                  },
+                ),
+                Divider(
+                  height: 1,
+                  indent: 76,
+                  color: isDarkMode ? Colors.white12 : Colors.grey.shade200,
+                ),
+
+                // Media option
+                _buildOptionRow(
+                  context: context,
+                  icon: Icons.image_outlined,
+                  title: 'Галерея',
+                  subtitle: 'Интихоби расм ва видео',
+                  textColor: textColor,
+                  isDarkMode: isDarkMode,
+                  onTap: () async {
+                    Navigator.pop(context);
+                    final picker = ImagePicker();
+                    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+                    if (image != null) {
+                      _uploadQuestionImage(q, image.path, image.name);
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildOptionRow({
+    required BuildContext context,
+    required IconData icon,
+    required String title,
+    String? subtitle,
+    required VoidCallback onTap,
+    required Color textColor,
+    required bool isDarkMode,
+  }) {
+    return ListTile(
+      leading: Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          color: isDarkMode ? Colors.white.withOpacity(0.08) : const Color(0xFFF1F8F4),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(
+          icon,
+          color: isDarkMode ? const Color(0xFFA3E635) : const Color(0xFF1E7431),
+          size: 24,
+        ),
+      ),
+      title: Text(
+        title,
+        style: TextStyle(
+          color: textColor,
+          fontWeight: FontWeight.bold,
+          fontSize: 16,
+        ),
+      ),
+      subtitle: subtitle != null
+          ? Text(
+              subtitle,
+              style: TextStyle(
+                color: textColor.withOpacity(0.5),
+                fontSize: 13,
+              ),
+            )
+          : null,
+      onTap: onTap,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final isEditMode = widget.testId != null;
+
+    final scaffoldBg = isDarkMode ? const Color(0xFF0D120E) : const Color(0xFFF1F8F4);
+    final cardBg = isDarkMode ? const Color(0xFF162218) : Colors.white;
+    final textColor = isDarkMode ? Colors.white : Colors.black87;
+    final subTextColor = isDarkMode ? Colors.white70 : Colors.black54;
+    final borderColor = isDarkMode ? const Color(0xFF2E3D32) : const Color(0xFFE5E7EB);
+
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: scaffoldBg,
+        appBar: AppBar(
+          title: Text(
+            isEditMode ? 'Таҳрири тест' : 'Сохтани тести нав',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: isDarkMode ? Colors.white : Colors.black,
+            ),
+          ),
+          backgroundColor: isDarkMode ? Colors.black : Colors.white,
+          iconTheme: IconThemeData(color: isDarkMode ? Colors.white : Colors.black),
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(color: Color(0xFF1E7431)),
+        ),
+      );
+    }
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0D120E),
+      backgroundColor: scaffoldBg,
       appBar: AppBar(
-        title: const Text('Сохтани тести нав', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: const Color(0xFF162218),
+        title: Text(
+          isEditMode ? 'Таҳрири тест' : 'Сохтани тести нав', 
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: isDarkMode ? Colors.white : Colors.black,
+          )
+        ),
+        backgroundColor: isDarkMode ? Colors.black : Colors.white,
+        iconTheme: IconThemeData(color: isDarkMode ? Colors.white : Colors.black),
       ),
       body: Form(
         key: _formKey,
@@ -200,30 +486,30 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFF162218),
+                color: cardBg,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFF2E3D32)),
+                border: Border.all(color: borderColor),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Маълумоти умумӣ',
-                    style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                    style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _titleController,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: _inputDecoration('Номи тест', hint: 'Масалан: Имтиҳони ниҳоӣ аз Математика'),
+                    style: TextStyle(color: textColor),
+                    decoration: _inputDecoration('Номи тест', hint: 'Масалан: Имтиҳони ниҳоӣ аз Математика', isDarkMode: isDarkMode),
                     validator: (val) => val == null || val.trim().isEmpty ? 'Номи тестро ворид кунед' : null,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _descriptionController,
-                    style: const TextStyle(color: Colors.white),
+                    style: TextStyle(color: textColor),
                     maxLines: 2,
-                    decoration: _inputDecoration('Тавсифи тест (ихтиёрӣ)', hint: 'Тавсифи кӯтоҳи имтиҳон...'),
+                    decoration: _inputDecoration('Тавсифи тест (ихтиёрӣ)', hint: 'Тавсифи кӯтоҳи имтиҳон...', isDarkMode: isDarkMode),
                   ),
                 ],
               ),
@@ -235,7 +521,7 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
               children: [
                 Text(
                   'Саволҳо (${_questions.length})',
-                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 TextButton.icon(
                   onPressed: _addQuestion,
@@ -257,9 +543,9 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
                 margin: const EdgeInsets.only(bottom: 16),
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF162218),
+                  color: cardBg,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: const Color(0xFF2E3D32)),
+                  border: Border.all(color: borderColor),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -272,7 +558,7 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
                           side: BorderSide.none,
                           label: Text(
                             'Саволи ${index + 1}',
-                            style: const TextStyle(color: Color(0xFFA3E635), fontWeight: FontWeight.bold, fontSize: 12),
+                            style: const TextStyle(color: Color(0xFF1E7431), fontWeight: FontWeight.bold, fontSize: 12),
                           ),
                         ),
                         IconButton(
@@ -283,8 +569,8 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
-                      style: const TextStyle(color: Colors.white),
-                      decoration: _inputDecoration('Матни савол'),
+                      style: TextStyle(color: textColor),
+                      decoration: _inputDecoration('Матни савол', isDarkMode: isDarkMode),
                       initialValue: q['questionText'],
                       onChanged: (val) => q['questionText'] = val,
                     ),
@@ -294,15 +580,15 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
                       children: [
                         Expanded(
                           child: DropdownButtonFormField<String>(
-                            dropdownColor: const Color(0xFF162218),
+                            dropdownColor: cardBg,
                             value: qType,
-                            style: const TextStyle(color: Colors.white),
-                            decoration: _inputDecoration('Намуди савол'),
-                            items: const [
-                              DropdownMenuItem(value: 'Single', child: Text('Интихобӣ (Якҷавоба)')),
-                              DropdownMenuItem(value: 'Multiple', child: Text('Интихобӣ (Мултиҷавоб)')),
-                              DropdownMenuItem(value: 'Closed', child: Text('Хаттӣ (Пӯшида)')),
-                              DropdownMenuItem(value: 'TrueFalse', child: Text('Рост / Дурӯғ (Тест)')),
+                            style: TextStyle(color: textColor),
+                            decoration: _inputDecoration('Намуди савол', isDarkMode: isDarkMode),
+                            items: [
+                              DropdownMenuItem(value: 'Single', child: Text('Интихобӣ (Якҷавоба)', style: TextStyle(color: textColor))),
+                              DropdownMenuItem(value: 'Multiple', child: Text('Интихобӣ (Мултиҷавоб)', style: TextStyle(color: textColor))),
+                              DropdownMenuItem(value: 'Closed', child: Text('Хаттӣ (Пӯшида)', style: TextStyle(color: textColor))),
+                              DropdownMenuItem(value: 'TrueFalse', child: Text('Рост / Дурӯғ (Тест)', style: TextStyle(color: textColor))),
                             ],
                             onChanged: (val) {
                               if (val != null) {
@@ -335,8 +621,8 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
                           width: 80,
                           child: TextFormField(
                             keyboardType: TextInputType.number,
-                            style: const TextStyle(color: Colors.white),
-                            decoration: _inputDecoration('Балл'),
+                            style: TextStyle(color: textColor),
+                            decoration: _inputDecoration('Балл', isDarkMode: isDarkMode),
                             initialValue: '${q['points']}',
                             onChanged: (val) {
                               q['points'] = int.tryParse(val) ?? 10;
@@ -346,133 +632,112 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    TextFormField(
-                      style: const TextStyle(color: Colors.white),
-                      decoration: _inputDecoration('Сурати савол (URL-и сурат, ихтиёрӣ)', hint: 'Масалан: https://example.com/image.png'),
-                      initialValue: q['imageUrl'] ?? '',
-                      onChanged: (val) => q['imageUrl'] = val,
-                    ),
 
-                    if (isClosed) ...[
+                    // Image picker button
+                    Row(
+                      children: [
+                        Text(
+                          'Расми савол:',
+                          style: TextStyle(color: textColor, fontSize: 13, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(width: 12),
+                        ElevatedButton.icon(
+                          onPressed: () => _showImageSourceBottomSheet(q, textColor, isDarkMode),
+                          icon: const Icon(Icons.image, color: Colors.white, size: 18),
+                          label: const Text('Боргузории расм', style: TextStyle(color: Colors.white, fontSize: 13)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF1E7431),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (q['imageUrl'] != null && q['imageUrl'].toString().isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: CachedNetworkImage(
+                              imageUrl: ApiService.getFullImageUrl(q['imageUrl']),
+                              height: 60,
+                              width: 80,
+                              fit: BoxFit.cover,
+                              placeholder: (context, url) => const SizedBox(
+                                width: 80,
+                                height: 60,
+                                child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF1E7431))),
+                              ),
+                              errorWidget: (context, url, error) => const Icon(Icons.broken_image, color: Colors.grey),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          TextButton.icon(
+                            onPressed: () {
+                              setState(() {
+                                q['imageUrl'] = '';
+                              });
+                            },
+                            icon: const Icon(Icons.delete, color: Colors.redAccent, size: 18),
+                            label: const Text('Тоза кардан', style: TextStyle(color: Colors.redAccent)),
+                          ),
+                        ],
+                      ),
+                    ],
+
+                    if (isTrueFalse) ...[
                       const SizedBox(height: 16),
-                      TextFormField(
-                        style: const TextStyle(color: Colors.white),
-                        decoration: _inputDecoration('Рамз / Ҷавоби дуруст (ихтиёрӣ)', hint: 'Калима ё рамзи махсус барои санҷиши автоматӣ'),
-                        initialValue: q['correctOption'] ?? '',
-                        onChanged: (val) => q['correctOption'] = val,
+                      Text(
+                        'Ҷавоби дуруст:',
+                        style: TextStyle(color: subTextColor, fontSize: 13, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Radio<String>(
+                            value: 'A',
+                            groupValue: q['correctOption'],
+                            activeColor: const Color(0xFF1E7431),
+                            onChanged: (val) {
+                              if (val != null) {
+                                setState(() {
+                                  q['correctOption'] = val;
+                                });
+                              }
+                            },
+                          ),
+                          Text('Рост', style: TextStyle(color: textColor)),
+                          const SizedBox(width: 20),
+                          Radio<String>(
+                            value: 'B',
+                            groupValue: q['correctOption'],
+                            activeColor: const Color(0xFF1E7431),
+                            onChanged: (val) {
+                              if (val != null) {
+                                setState(() {
+                                  q['correctOption'] = val;
+                                });
+                              }
+                            },
+                          ),
+                          Text('Дурӯғ', style: TextStyle(color: textColor)),
+                        ],
                       ),
                     ],
 
                     if (!isClosed && !isTrueFalse) ...[
                       const SizedBox(height: 16),
-                      const Text(
-                        'Вариантҳои ҷавоб:',
-                        style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.bold),
+                      Text(
+                        'Вариантҳои ҷавоб (интихоб кунед ҷавоби дурустро аз чап):',
+                        style: TextStyle(color: subTextColor, fontSize: 13, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 8),
-                      // Options A, B, C, D Inputs
+                      // Options A, B, C, D Inputs with checkmarks on the left
                       _buildOptionField('A', q, index),
                       _buildOptionField('B', q, index),
                       _buildOptionField('C', q, index),
                       _buildOptionField('D', q, index),
-                    ],
-
-                    if (!isClosed) ...[
-                      const SizedBox(height: 12),
-                      const Text(
-                        'Ҷавоби дуруст:',
-                        style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 8),
-
-                      // Correct Options Selection
-                      if (isTrueFalse)
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            ChoiceChip(
-                              label: const Text('Рост'),
-                              selected: q['correctOption'] == 'A',
-                              selectedColor: const Color(0xFF1E7431),
-                              backgroundColor: Colors.transparent,
-                              side: BorderSide(
-                                color: q['correctOption'] == 'A' ? const Color(0xFF1E7431) : const Color(0xFF1E7431).withOpacity(0.2),
-                              ),
-                              labelStyle: TextStyle(color: q['correctOption'] == 'A' ? Colors.white : const Color(0xFF657367)),
-                              onSelected: (selected) {
-                                if (selected) {
-                                  setState(() {
-                                    q['correctOption'] = 'A';
-                                  });
-                                }
-                              },
-                            ),
-                            ChoiceChip(
-                              label: const Text('Дурӯғ'),
-                              selected: q['correctOption'] == 'B',
-                              selectedColor: const Color(0xFF1E7431),
-                              backgroundColor: Colors.transparent,
-                              side: BorderSide(
-                                color: q['correctOption'] == 'B' ? const Color(0xFF1E7431) : const Color(0xFF1E7431).withOpacity(0.2),
-                              ),
-                              labelStyle: TextStyle(color: q['correctOption'] == 'B' ? Colors.white : const Color(0xFF657367)),
-                              onSelected: (selected) {
-                                if (selected) {
-                                  setState(() {
-                                    q['correctOption'] = 'B';
-                                  });
-                                }
-                              },
-                            ),
-                          ],
-                        )
-                      else if (qType == 'Single')
-                        Wrap(
-                          spacing: 8.0,
-                          runSpacing: 8.0,
-                          children: ['A', 'B', 'C', 'D'].map((opt) {
-                            final bool active = q['correctOption'] == opt;
-                            return ChoiceChip(
-                              label: Text('Варианти $opt'),
-                              selected: active,
-                              selectedColor: const Color(0xFF1E7431),
-                              backgroundColor: Colors.transparent,
-                              side: BorderSide(
-                                color: active ? const Color(0xFF1E7431) : const Color(0xFF1E7431).withOpacity(0.2),
-                              ),
-                              labelStyle: TextStyle(color: active ? Colors.white : const Color(0xFF657367)),
-                              onSelected: (selected) {
-                                if (selected) {
-                                  setState(() {
-                                    q['correctOption'] = opt;
-                                  });
-                                }
-                              },
-                            );
-                          }).toList(),
-                        )
-                      else
-                        Wrap(
-                          spacing: 8.0,
-                          runSpacing: 8.0,
-                          children: ['A', 'B', 'C', 'D'].map((opt) {
-                            final String correctStr = q['correctOption'] ?? '';
-                            final List<String> list = correctStr.split(',').map((o) => o.trim()).toList();
-                            final bool active = list.contains(opt);
-                            return FilterChip(
-                              label: Text('Варианти $opt'),
-                              selected: active,
-                              selectedColor: const Color(0xFF1E7431),
-                              backgroundColor: Colors.transparent,
-                              checkmarkColor: Colors.white,
-                              side: BorderSide(
-                                color: active ? const Color(0xFF1E7431) : const Color(0xFF1E7431).withOpacity(0.2),
-                              ),
-                              labelStyle: TextStyle(color: active ? Colors.white : const Color(0xFF657367)),
-                              onSelected: (_) => _toggleMultiCorrectOption(index, opt),
-                            );
-                          }).toList(),
-                        ),
                     ],
                   ],
                 ),
@@ -503,17 +768,53 @@ class _CreateTestScreenState extends State<CreateTestScreen> {
   }
 
   Widget _buildOptionField(String label, Map<String, dynamic> q, int index) {
+    final qType = q['questionType'] ?? 'Single';
+    final isMultiple = qType == 'Multiple';
+    final isSelected = isMultiple
+        ? (q['correctOption'] ?? '').toString().split(',').map((o) => o.trim()).contains(label)
+        : q['correctOption'] == label;
+
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDarkMode ? Colors.white : Colors.black87;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
-      child: TextFormField(
-        style: const TextStyle(color: Colors.white, fontSize: 13),
-        decoration: _inputDecoration('Варианти $label').copyWith(
-          prefixText: 'Варианти $label:  ',
-          prefixStyle: const TextStyle(color: Color(0xFF1E7431), fontWeight: FontWeight.bold),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        ),
-        initialValue: q['option$label'],
-        onChanged: (val) => q['option$label'] = val,
+      child: Row(
+        children: [
+          if (isMultiple)
+            Checkbox(
+              value: isSelected,
+              activeColor: const Color(0xFF1E7431),
+              side: BorderSide(color: isDarkMode ? Colors.white54 : Colors.black54, width: 2),
+              onChanged: (val) {
+                _toggleMultiCorrectOption(index, label);
+              },
+            )
+          else
+            Radio<String>(
+              value: label,
+              groupValue: q['correctOption'],
+              activeColor: const Color(0xFF1E7431),
+              onChanged: (val) {
+                if (val != null) {
+                  setState(() {
+                    q['correctOption'] = val;
+                  });
+                }
+              },
+            ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: TextFormField(
+              style: TextStyle(color: textColor),
+              decoration: _inputDecoration('Варианти $label', isDarkMode: isDarkMode).copyWith(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              ),
+              initialValue: q['option$label'],
+              onChanged: (val) => q['option$label'] = val,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -35,7 +35,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
         });
       } else {
         setState(() {
-          _error = 'Фармоишҳо ёфт нашуданд.';
+          _error = 'Чекҳо ёфт нашуданд.';
           _isLoading = false;
         });
       }
@@ -145,7 +145,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
               Icon(Icons.receipt_long_outlined, size: 80, color: textColor.withOpacity(0.2)),
               const SizedBox(height: 20),
               Text(
-                'Шумо то ҳол ягон заявка надодаед',
+                'Шумо то ҳол ягон чек надоред',
                 style: TextStyle(color: subTextColor, fontSize: 16),
               ),
             ],
@@ -198,7 +198,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                             Icon(Icons.receipt_outlined, color: subTextColor, size: 18),
                             const SizedBox(width: 8),
                             Text(
-                              'Заявка #${order['id']}',
+                              'Чек #${order['id']}',
                               style: TextStyle(
                                 color: textColor,
                                 fontWeight: FontWeight.bold,
@@ -295,9 +295,9 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: theme.appBarTheme.backgroundColor,
+        backgroundColor: theme.brightness == Brightness.dark ? Colors.black : Colors.white,
         elevation: 0,
-        title: Text('Заявкаҳои ман', style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
+        title: Text('Чекҳои ман', style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
         iconTheme: IconThemeData(color: textColor),
         actions: [
           IconButton(

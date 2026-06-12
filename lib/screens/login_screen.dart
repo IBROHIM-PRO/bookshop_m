@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/theme_provider.dart';
 import '../services/api_service.dart';
-import '../widgets/eduspace_logo.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../widgets/app_snackbar.dart';
 import 'register_screen.dart';
 import 'reader/reader_home.dart';
@@ -22,11 +22,25 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final FocusNode _emailFocusNode = FocusNode();
+  final FocusNode _passwordFocusNode = FocusNode();
   bool _isPasswordVisible = false;
+  bool _isEmailFocused = false;
+  bool _isPasswordFocused = false;
 
   @override
   void initState() {
     super.initState();
+    _emailFocusNode.addListener(() {
+      setState(() {
+        _isEmailFocused = _emailFocusNode.hasFocus;
+      });
+    });
+    _passwordFocusNode.addListener(() {
+      setState(() {
+        _isPasswordFocused = _passwordFocusNode.hasFocus;
+      });
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -80,6 +94,8 @@ class _LoginScreenState extends State<LoginScreen> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _emailFocusNode.dispose();
+    _passwordFocusNode.dispose();
     super.dispose();
   }
 
@@ -131,7 +147,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final isLoading = authProvider.isLoading;
     final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
     final textColor = isDarkMode ? Colors.white : Colors.black;
-    final backgroundColor = isDarkMode ? Colors.black : Colors.white;
+    final backgroundColor = isDarkMode ? Colors.black : const Color(0xFFF1F8F4);
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -143,190 +159,158 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Logo
-                const EduSpaceLogo(
-                  size: 110,
-                  isWhiteBackground: false, // Green circle with white logo inside
+                // Custom Logo Row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SvgPicture.asset(
+                      'assets/logo/Ellipse 2.svg',
+                      width: 90,
+                      height: 90,
+                    ),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'EduSpase',
+                          style: TextStyle(
+                            fontSize: 34,
+                            fontWeight: FontWeight.w500,
+                            fontFamily: 'serif', // Match the serif font in Figma
+                            color: const Color(0xFF22873B),
+                          ),
+                        ),
+                        Text(
+                          'Маркази омузишӣ',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w400,
+                            fontFamily: 'serif',
+                            color: const Color(0xFF22873B),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 50),
                 Text(
-                  'EduSpace',
-                  style: TextStyle(
-                    fontSize: 36,
-                    fontWeight: FontWeight.bold,
-                    color: isDarkMode ? Colors.white : const Color(0xFF1E7431),
-                    letterSpacing: 1.5,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Learning Center',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: isDarkMode ? Colors.white70 : const Color(0xFF657367),
-                    letterSpacing: 1.1,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Воридшавӣ барои хонандагон ва волидайн',
+                  'Воридшави ба барнома',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 15,
-                    color: textColor.withOpacity(0.6),
-                  ),
-                ),
-                const SizedBox(height: 48),
-                // Form container
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: textColor.withOpacity(0.03),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color: textColor.withOpacity(0.1),
-                      width: 1,
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      // Email
-                      TextFormField(
-                        controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        style: TextStyle(color: textColor),
-                        textInputAction: TextInputAction.next,
-                        decoration: InputDecoration(
-                          labelText: 'Почтаи электронӣ (Email)',
-                          labelStyle: TextStyle(color: isDarkMode ? textColor.withOpacity(0.6) : const Color(0xFF657367)),
-                          prefixIcon: Icon(
-                            Icons.email_outlined,
-                            color: isDarkMode ? textColor : const Color(0xFF657367),
-                          ),
-                          filled: true,
-                          fillColor: isDarkMode ? textColor.withOpacity(0.05) : Colors.white,
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: isDarkMode ? textColor.withOpacity(0.1) : const Color(0xFFD1E2D5)),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(
-                              color: isDarkMode ? textColor : const Color(0xFF1E7431),
-                              width: 1.5,
-                            ),
-                          ),
-                          errorBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: Colors.redAccent),
-                          ),
-                          focusedErrorBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
-                          ),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty || !value.contains('@')) {
-                            return 'Илтимос, email-и дурустро ворид кунед';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 20),
-                      // Password
-                      TextFormField(
-                        controller: _passwordController,
-                        obscureText: !_isPasswordVisible,
-                        style: TextStyle(color: textColor),
-                        textInputAction: TextInputAction.done,
-                        onFieldSubmitted: (_) => isLoading ? null : _submit(),
-                        decoration: InputDecoration(
-                          labelText: 'Парол',
-                          labelStyle: TextStyle(color: isDarkMode ? textColor.withOpacity(0.6) : const Color(0xFF657367)),
-                          prefixIcon: Icon(
-                            Icons.lock_outline,
-                            color: isDarkMode ? textColor : const Color(0xFF657367),
-                          ),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _isPasswordVisible
-                                  ? Icons.visibility_off_outlined
-                                  : Icons.visibility_outlined,
-                              color: isDarkMode ? textColor.withOpacity(0.4) : const Color(0xFF8A9A8E),
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _isPasswordVisible = !_isPasswordVisible;
-                              });
-                            },
-                          ),
-                          filled: true,
-                          fillColor: isDarkMode ? textColor.withOpacity(0.05) : Colors.white,
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: isDarkMode ? textColor.withOpacity(0.1) : const Color(0xFFD1E2D5)),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(
-                              color: isDarkMode ? textColor : const Color(0xFF1E7431),
-                              width: 1.5,
-                            ),
-                          ),
-                          errorBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: Colors.redAccent),
-                          ),
-                          focusedErrorBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
-                          ),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty || value.length < 6) {
-                            return 'Парол бояд на камтар аз 6 аломат бошад';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 32),
-                      // Submit button
-                      SizedBox(
-                        width: double.infinity,
-                        height: 56,
-                        child: ElevatedButton(
-                          onPressed: isLoading ? null : _submit,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: isDarkMode ? textColor : const Color(0xFF1E7431),
-                            foregroundColor: isDarkMode ? backgroundColor : Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(100),
-                            ),
-                            elevation: 0,
-                          ),
-                          child: isLoading
-                              ? SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: CircularProgressIndicator(
-                                    color: isDarkMode ? backgroundColor : Colors.white,
-                                    strokeWidth: 2.5,
-                                  ),
-                                )
-                              : const Text(
-                                  'Ворид шудан',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                        ),
-                      ),
-                    ],
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF111827),
                   ),
                 ),
                 const SizedBox(height: 24),
+                // Phone Input
+                TextFormField(
+                  controller: _emailController,
+                  focusNode: _emailFocusNode,
+                  keyboardType: TextInputType.emailAddress,
+                  style: const TextStyle(color: Color(0xFF111827), fontWeight: FontWeight.w500),
+                  textInputAction: TextInputAction.next,
+                  decoration: InputDecoration(
+                    hintText: 'Почтаи электрониро ворид кунед',
+                    hintStyle: TextStyle(color: const Color(0xFF111827).withOpacity(0.5), fontSize: 14, fontWeight: FontWeight.normal),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                    prefixIcon: const Icon(
+                      Icons.email_outlined,
+                      color: Color(0xFF22873B),
+                    ),
+                    filled: true,
+                    fillColor: _isEmailFocused ? const Color(0xFFEDF9E8) : Colors.white,
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFF22873B), width: 1.5),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Илтимос, почтаи электрониро ворид кунед';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                // Password Input
+                TextFormField(
+                  controller: _passwordController,
+                  focusNode: _passwordFocusNode,
+                  obscureText: !_isPasswordVisible,
+                  style: const TextStyle(color: Color(0xFF111827), fontWeight: FontWeight.w500),
+                  textInputAction: TextInputAction.done,
+                  onFieldSubmitted: (_) => isLoading ? null : _submit(),
+                  decoration: InputDecoration(
+                    hintText: 'Паролро ворид кунед',
+                    hintStyle: TextStyle(color: const Color(0xFF111827).withOpacity(0.5), fontSize: 14, fontWeight: FontWeight.normal),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                    prefixIcon: const Icon(
+                      Icons.lock_outline,
+                      color: Color(0xFF22873B),
+                    ),
+                    filled: true,
+                    fillColor: _isPasswordFocused ? const Color(0xFFEDF9E8) : Colors.white,
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFF22873B), width: 1.5),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Паролро ворид кунед';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 32),
+                // Submit button
+                SizedBox(
+                  width: double.infinity,
+                  height: 52, // Increased height to prevent text from being cut off
+                  child: ElevatedButton(
+                    onPressed: isLoading ? null : _submit,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF22873B),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12), // Figma corner radius 12
+                      ),
+                      elevation: 0,
+                    ),
+                    child: isLoading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2.5,
+                            ),
+                          )
+                        : const Text(
+                            'Ворид шудан',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 80),
+                const Text(
+                  'Версияи 1.0',
+                  style: TextStyle(color: Color(0xFF6B7280), fontSize: 14),
+                ),
               ],
             ),
           ),

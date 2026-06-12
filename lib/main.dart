@@ -41,11 +41,11 @@ class MyApp extends StatelessWidget {
             theme: ThemeData(
               useMaterial3: true,
               brightness: Brightness.light,
-              scaffoldBackgroundColor: const Color(0xFFEBF3ED),
+              scaffoldBackgroundColor: const Color(0xFFF1F8F4),
               cardColor: Colors.white,
               dividerColor: const Color(0xFFD1E2D5),
               appBarTheme: const AppBarTheme(
-                backgroundColor: Color(0xFFEBF3ED),
+                backgroundColor: Color(0xFFF1F8F4),
                 foregroundColor: Color(0xFF1A1F1C),
                 elevation: 0,
                 scrolledUnderElevation: 0,

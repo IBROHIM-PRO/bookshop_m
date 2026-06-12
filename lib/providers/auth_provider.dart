@@ -40,10 +40,13 @@ class AuthProvider with ChangeNotifier {
     
     _wsService!.onRawMessage = (data) {
       final type = data['type'] as String?;
-      if (type == 'login_approval_request') {
+      if (type == 'login_approval_request' || type == 'admin_login_approval_request') {
         final requestId = data['requestId'] as String?;
         if (requestId != null) {
-          _showApprovalDialog(requestId);
+          final message = data['message'] as String? ?? 
+            'Дастгоҳи дигар мехоҳад ба ҳисоби шумо ворид шавад. Оё иҷозат медиҳед?';
+          final title = data['title'] as String? ?? 'Дархост барои воридшавӣ';
+          _showApprovalDialog(requestId, title: title, message: message, isAdmin: type == 'admin_login_approval_request');
         }
       } else if (type == 'force_logout') {
         _sessionExpiredMessage = 'Шумо дар дастгоҳи дигар ворид шудед!';
@@ -68,7 +71,7 @@ class AuthProvider with ChangeNotifier {
     BadgeService().updateBadgeCount();
   }
 
-  void _showApprovalDialog(String requestId) {
+  void _showApprovalDialog(String requestId, {String? title, String? message, bool isAdmin = false}) {
     final context = navigatorKey.currentState?.overlay?.context;
     if (context == null) return;
 
@@ -77,13 +80,19 @@ class AuthProvider with ChangeNotifier {
       barrierDismissible: false,
       builder: (ctx) => _LoginApprovalDialog(
         requestId: requestId,
+        dialogTitle: title ?? 'Дархост барои воридшавӣ',
+        dialogMessage: message ?? 'Дастгоҳи дигар мехоҳад ба ҳисоби шумо ворид шавад. Агар қабул кунед, шумо аз ин дастгоҳ хориҷ мешавед.',
+        isAdmin: isAdmin,
         onAccepted: () {
-          _sessionExpiredMessage = 'Сессия дар дастгоҳи дигар фаъол карда шуд.';
-          logout();
-          navigatorKey.currentState?.pushAndRemoveUntil(
-            MaterialPageRoute(builder: (_) => const AuthWrapper()),
-            (route) => false,
-          );
+          if (!isAdmin) {
+            // Only logout the current device if it's the user's own approval
+            _sessionExpiredMessage = 'Сессия дар дастгоҳи дигар фаъол карда шуд.';
+            logout();
+            navigatorKey.currentState?.pushAndRemoveUntil(
+              MaterialPageRoute(builder: (_) => const AuthWrapper()),
+              (route) => false,
+            );
+          }
         },
         onRejected: () {
           // Rejection handled inside dialog request
@@ -141,10 +150,15 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await ApiService.post('/api/auth/login', {
-        'email': email,
-        'password': password,
-      });
+      // Login may take up to 3 minutes while waiting for session approval
+      final response = await ApiService.postWithTimeout(
+        '/api/auth/login',
+        {
+          'email': email,
+          'password': password,
+        },
+        const Duration(minutes: 3),
+      );
 
       final resData = jsonDecode(response.body);
       if (response.statusCode == 200) {
@@ -168,7 +182,7 @@ class AuthProvider with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       if (e is TimeoutException) {
-        return 'Пайвастшавӣ суст аст. Лутфан интизор шавед...';
+        return 'Вақти интизорӣ гузашт. Лутфан бори дигар кӯшиш кунед.';
       }
       return 'Пайвастшавӣ бо сервер номумкин аст';
     }
@@ -253,11 +267,17 @@ class AuthProvider with ChangeNotifier {
 
 class _LoginApprovalDialog extends StatefulWidget {
   final String requestId;
+  final String dialogTitle;
+  final String dialogMessage;
+  final bool isAdmin;
   final VoidCallback onAccepted;
   final VoidCallback onRejected;
 
   const _LoginApprovalDialog({
     required this.requestId,
+    required this.dialogTitle,
+    required this.dialogMessage,
+    required this.isAdmin,
     required this.onAccepted,
     required this.onRejected,
   });
@@ -267,7 +287,7 @@ class _LoginApprovalDialog extends StatefulWidget {
 }
 
 class _LoginApprovalDialogState extends State<_LoginApprovalDialog> {
-  int _secondsRemaining = 60;
+  int _secondsRemaining = 120;
   Timer? _timer;
   bool _isResponding = false;
 
@@ -327,13 +347,21 @@ class _LoginApprovalDialogState extends State<_LoginApprovalDialog> {
     return AlertDialog(
       backgroundColor: const Color(0xFF1E173E),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      title: const Row(
+      title: Row(
         children: [
-          Icon(Icons.security_rounded, color: Colors.amber, size: 28),
-          SizedBox(width: 10),
-          Text(
-            'Дархости воридшавӣ',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+          Icon(
+            widget.isAdmin ? Icons.admin_panel_settings_rounded : Icons.security_rounded,
+            color: Colors.amber,
+            size: 28,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              widget.dialogTitle,
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 2,
+            ),
           ),
         ],
       ),
@@ -341,9 +369,9 @@ class _LoginApprovalDialogState extends State<_LoginApprovalDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Дастгоҳи дигар мехоҳад ба ҳисоби шумо ворид шавад. Агар қабул кунед, шумо аз ин дастгоҳ хориҷ мешавед.',
-            style: TextStyle(color: Colors.white70, fontSize: 14, height: 1.4),
+          Text(
+            widget.dialogMessage,
+            style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.4),
           ),
           const SizedBox(height: 20),
           Center(

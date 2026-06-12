@@ -51,6 +51,8 @@ dependencies:
   app_badge_plus: ^1.2.0
   record: ^6.2.1
   audioplayers: ^6.7.1
+  flutter_svg: ^2.3.0
+  image_picker: ^1.2.2
 
 dependency_overrides:
   web: ^1.1.1
@@ -86,6 +88,10 @@ flutter:
 
   assets:
     - assets/notifications/
+    - assets/logo/
+    - assets/logo/logobackground/
+    - assets/logo/logosneckbar/
+    - assets/logo/logoheader/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

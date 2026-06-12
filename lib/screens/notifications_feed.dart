@@ -7,9 +7,12 @@ import '../providers/theme_provider.dart';
 import '../services/api_service.dart';
 import '../services/websocket_service.dart';
 import '../services/badge_service.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:intl/intl.dart';
 
 class NotificationsFeedScreen extends StatefulWidget {
-  const NotificationsFeedScreen({super.key});
+  final bool showAppBar;
+  const NotificationsFeedScreen({super.key, this.showAppBar = true});
 
   @override
   State<NotificationsFeedScreen> createState() => _NotificationsFeedScreenState();
@@ -195,65 +198,101 @@ class _NotificationsFeedScreenState extends State<NotificationsFeedScreen> {
 
   int get _unreadCount => _notifications.where((n) => !n.isRead).length;
 
-  String _getIconAsset(NotificationModel notification) {
-    final title = notification.title.toLowerCase();
+  String _getSvgBackground(NotificationModel notification) {
     final category = notification.category.toLowerCase();
-
     if (category == 'academic') {
-      if (title.contains('нав')) {
-        return 'assets/notifications/test_assigned.png';
-      } else if (title.contains('супоридан') || title.contains('ҷавоб')) {
-        return 'assets/notifications/test_completed.png';
-      } else if (title.contains('натиҷа') || title.contains('қабул')) {
-        return 'assets/notifications/test_result.png';
-      } else if (title.contains('тафтиш') || title.contains('бозгардон')) {
-        return 'assets/notifications/academic_progress.png';
-      }
-      return 'assets/notifications/test_assigned.png';
+      return 'assets/logo/logobackground/exam-svgrepo-com 1.svg';
     } else if (category == 'commercial') {
-      if (title.contains('фармоиш')) {
-        return 'assets/notifications/order_created.png';
-      } else if (title.contains('дастрасӣ')) {
-        return 'assets/notifications/book_access_granted.png';
-      } else if (title.contains('пардохт') && title.contains('муваффақ')) {
-        return 'assets/notifications/payment_success.png';
-      } else if (title.contains('пардохт') && title.contains('хато')) {
-        return 'assets/notifications/payment_failed.png';
+      if (notification.title.toLowerCase().contains('пардохт')) {
+        return 'assets/logo/logobackground/payment-method-svgrepo-com 1.svg';
       }
-      return 'assets/notifications/order_created.png';
+      return 'assets/logo/logobackground/Vector.svg';
     } else if (category == 'marketing') {
-      if (title.contains('нав') || title.contains('илова')) {
-        return 'assets/notifications/new_arrival.png';
-      } else if (title.contains('аксия') || title.contains('пешниҳод') || title.contains('тахфиф')) {
-        return 'assets/notifications/promotion.png';
-      }
-      return 'assets/notifications/recommendation.png';
+      return 'assets/logo/logobackground/Vector-1.svg';
     } else if (category == 'security') {
-      if (title.contains('ворид') || title.contains('дастгоҳ') || title.contains('сессия') || title.contains('амният')) {
-        return 'assets/notifications/security_alert.png';
-      }
-      return 'assets/notifications/system_alert.png';
+      return 'assets/logo/logobackground/system-settings-backup-svgrepo-com 1.svg';
     }
-    return 'assets/notifications/system_alert.png';
+    return 'assets/logo/logobackground/Vector.svg'; // Default
   }
 
-  String _formatDateTime(DateTime dateTime) {
-    final day = dateTime.day.toString().padLeft(2, '0');
-    final month = dateTime.month.toString().padLeft(2, '0');
-    final year = dateTime.year;
+  String _formatTime(DateTime dateTime) {
     final hour = dateTime.hour.toString().padLeft(2, '0');
     final minute = dateTime.minute.toString().padLeft(2, '0');
-    return '$day.$month.$year — $hour:$minute';
+    return '$hour:$minute';
+  }
+
+  String _formatDateHeader(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final msgDate = DateTime(date.year, date.month, date.day);
+
+    if (msgDate == today) return 'Имрӯз';
+    if (msgDate == yesterday) return 'Дирӯз';
+    return '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
+  }
+
+  List<dynamic> _getGroupedNotifications() {
+    List<dynamic> grouped = [];
+    String? currentGroup;
+    for (var n in _notifications) {
+      final group = _formatDateHeader(n.dateCreated);
+      if (group != currentGroup) {
+        grouped.add(group);
+        currentGroup = group;
+      }
+      grouped.add(n);
+    }
+    return grouped;
   }
 
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
-    final textColor = isDarkMode ? Colors.white : Colors.black;
-    final backgroundColor = isDarkMode ? Colors.black : Colors.white;
+    final textColor = isDarkMode ? Colors.white : const Color(0xFF111827);
+    final backgroundColor = isDarkMode ? Colors.black : const Color(0xFFF1F8F4); // Light green theme
+    final appBarColor = isDarkMode ? Colors.black : Colors.white;
+
+    final groupedList = _getGroupedNotifications();
 
     return Scaffold(
       backgroundColor: backgroundColor,
+      appBar: widget.showAppBar ? AppBar(
+        backgroundColor: appBarColor,
+        elevation: 0,
+        centerTitle: true,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: isDarkMode ? Colors.white : Colors.black),
+          onPressed: () {
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            }
+          },
+        ),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Паёмҳо',
+              style: TextStyle(
+                color: isDarkMode ? Colors.white : Colors.black,
+                fontSize: 20,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(width: 8),
+            SvgPicture.asset(
+              'assets/logo/logobackground/notification-bell-svgrepo-com 1.svg',
+              width: 26,
+              height: 26,
+              colorFilter: ColorFilter.mode(
+                isDarkMode ? Colors.white : Colors.black,
+                BlendMode.srcIn,
+              ),
+            ),
+          ],
+        ),
+      ) : null,
       body: Column(
         children: [
           SingleChildScrollView(
@@ -280,13 +319,12 @@ class _NotificationsFeedScreenState extends State<NotificationsFeedScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? const Color(0xFF1E7431)
-                            : (isDarkMode ? Colors.white.withOpacity(0.05) : const Color(0xFFF0F4F1)),
+                            ? const Color(0xFF22873B)
+                            : (isDarkMode ? Colors.transparent : Colors.transparent),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: isSelected
-                              ? const Color(0xFF1E7431)
-                              : (isDarkMode ? Colors.white.withOpacity(0.1) : const Color(0xFFD1E2D5)),
+                          color: const Color(0xFF22873B),
+                          width: 1.5,
                         ),
                       ),
                       child: Text(
@@ -294,9 +332,9 @@ class _NotificationsFeedScreenState extends State<NotificationsFeedScreen> {
                         style: TextStyle(
                           color: isSelected
                               ? Colors.white
-                              : (isDarkMode ? Colors.white.withOpacity(0.8) : const Color(0xFF1A1F1C)),
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                          fontSize: 13,
+                              : const Color(0xFF22873B),
+                          fontWeight: FontWeight.w500,
+                          fontSize: 14,
                         ),
                       ),
                     ),
@@ -316,168 +354,145 @@ class _NotificationsFeedScreenState extends State<NotificationsFeedScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.notifications_none,
-                            size: 64,
-                            color: textColor.withOpacity(0.3)),
-                        const SizedBox(height: 16),
-                        Text('Ягон паём мавҷуд нест',
+                        SvgPicture.asset(
+                          'assets/logo/logobackground/notification-bell-svgrepo-com 1.svg',
+                          width: 100,
+                          height: 100,
+                        ),
+                        const SizedBox(height: 24),
+                        Text('Ягон паём нест',
                             style: TextStyle(
-                                color: textColor.withOpacity(0.5),
-                                fontSize: 16)),
+                                color: isDarkMode ? Colors.white : Colors.black,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18)),
+                        const SizedBox(height: 8),
+                        Text('Мо ба шумо хабар медиҳем,\nвақте ки чизи нав пайдо мешавад.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                color: isDarkMode ? Colors.white70 : Colors.black.withOpacity(0.6),
+                                fontSize: 14)),
                       ],
                     ),
                   )
                 : RefreshIndicator(
                     onRefresh: _fetchNotifications,
-                    color: textColor,
+                    color: const Color(0xFF22873B),
                     child: ListView.builder(
                       padding: const EdgeInsets.all(16),
-                      itemCount: _notifications.length,
+                      itemCount: groupedList.length,
                       itemBuilder: (context, index) {
-                        final notification = _notifications[index];
+                        final item = groupedList[index];
+
+                        if (item is String) {
+                          // Date Header
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
+                            child: Text(
+                              item,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: isDarkMode ? Colors.white70 : const Color(0xFF111827),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          );
+                        }
+
+                        final notification = item as NotificationModel;
+
                         return GestureDetector(
                           onTap: () {
                             if (!notification.isRead) {
                               _markAsRead(notification.id);
                             }
-                            showDialog(
-                              context: context,
-                              builder: (ctx) => AlertDialog(
-                                backgroundColor: backgroundColor,
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(20),
-                                    side: BorderSide(color: textColor.withOpacity(0.1))),
-                                title: Text(notification.title,
-                                    style: TextStyle(
-                                        color: textColor)),
-                                content: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
-                                  children: [
-                                    Text(notification.message,
-                                        style: TextStyle(
-                                            color: textColor.withOpacity(0.8))),
-                                    const SizedBox(height: 12),
-                                    Row(
-                                      children: [
-                                        Icon(Icons.access_time,
-                                            size: 14,
-                                            color: textColor.withOpacity(0.4)),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          _formatDateTime(
-                                              notification.dateCreated),
-                                          style: TextStyle(
-                                              color: textColor.withOpacity(0.4),
-                                              fontSize: 12),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () =>
-                                        Navigator.of(ctx).pop(),
-                                    child: Text('Пӯшидан',
-                                        style: TextStyle(
-                                            color: textColor, fontWeight: FontWeight.bold)),
-                                  ),
-                                ],
-                              ),
-                            );
                           },
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 300),
+                          child: Container(
                             margin: const EdgeInsets.only(bottom: 12),
-                            padding: const EdgeInsets.all(16),
+                            clipBehavior: Clip.antiAlias,
                             decoration: BoxDecoration(
                               color: isDarkMode
-                                  ? (notification.isRead ? Colors.white.withOpacity(0.02) : Colors.white.withOpacity(0.07))
+                                  ? (notification.isRead ? const Color(0xFF1C1C1E) : const Color(0xFF2C2C2E))
                                   : Colors.white,
                               borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: isDarkMode
-                                    ? (notification.isRead ? textColor.withOpacity(0.05) : textColor.withOpacity(0.2))
-                                    : const Color(0xFF1E7431).withOpacity(0.15),
-                                width: 1,
-                              ),
                               boxShadow: isDarkMode ? [] : [
                                 BoxShadow(
-                                  color: const Color(0xFF228B22).withOpacity(0.04),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 3),
+                                  color: Colors.black.withOpacity(0.08),
+                                  blurRadius: 15,
+                                  offset: const Offset(0, 5),
                                 ),
                               ],
                             ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                            child: Stack(
                               children: [
-                                Opacity(
-                                  opacity: notification.isRead ? 0.6 : 1.0,
-                                  child: Image.asset(
-                                    _getIconAsset(notification),
-                                    width: 44,
-                                    height: 44,
-                                    fit: BoxFit.contain,
+                                // Background SVG icon in bottom right
+                                Positioned(
+                                  right: 10,
+                                  bottom: -15,
+                                  child: Opacity(
+                                    opacity: isDarkMode ? 0.05 : 0.08,
+                                    child: Transform.rotate(
+                                      angle: -0.26, // tilt like the mockup
+                                      child: SvgPicture.asset(
+                                        _getSvgBackground(notification),
+                                        width: 100,
+                                        height: 100,
+                                      ),
+                                    ),
                                   ),
                                 ),
-                                const SizedBox(width: 14),
-                                Expanded(
+                                // Content
+                                Padding(
+                                  padding: const EdgeInsets.all(16),
                                   child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text(
-                                        notification.title,
-                                        style: TextStyle(
-                                          color: isDarkMode ? textColor : const Color(0xFF1A1F1C),
-                                          fontSize: 15,
-                                          fontWeight: notification.isRead
-                                              ? FontWeight.normal
-                                              : FontWeight.bold,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 5),
-                                      Text(
-                                        notification.message,
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                            color: isDarkMode ? textColor.withOpacity(0.6) : const Color(0xFF657367),
-                                            fontSize: 13),
-                                      ),
-                                      const SizedBox(height: 7),
-
                                       Row(
+                                        crossAxisAlignment: CrossAxisAlignment.center,
                                         children: [
-                                          Icon(Icons.access_time,
-                                              size: 12,
-                                              color: isDarkMode ? textColor.withOpacity(0.3) : const Color(0xFF657367).withOpacity(0.6)),
-                                          const SizedBox(width: 4),
+                                          Expanded(
+                                            child: Text(
+                                              notification.title,
+                                              style: TextStyle(
+                                                color: isDarkMode ? Colors.white : const Color(0xFF111827),
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          if (!notification.isRead)
+                                            Container(
+                                              width: 8,
+                                              height: 8,
+                                              margin: const EdgeInsets.symmetric(horizontal: 8),
+                                              decoration: const BoxDecoration(
+                                                color: Colors.redAccent,
+                                                shape: BoxShape.circle,
+                                              ),
+                                            ),
                                           Text(
-                                            _formatDateTime(
-                                                notification.dateCreated),
+                                            _formatTime(notification.dateCreated),
                                             style: TextStyle(
-                                                color: isDarkMode ? textColor.withOpacity(0.35) : const Color(0xFF657367).withOpacity(0.7),
-                                                fontSize: 11),
+                                              color: isDarkMode ? Colors.white54 : Colors.black87,
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w500,
+                                            ),
                                           ),
                                         ],
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        notification.message,
+                                        style: TextStyle(
+                                          color: isDarkMode ? Colors.white70 : const Color(0xFF374151),
+                                          fontSize: 14,
+                                          height: 1.4,
+                                        ),
                                       ),
                                     ],
                                   ),
                                 ),
-                                if (!notification.isRead)
-                                  Container(
-                                    width: 9,
-                                    height: 9,
-                                    margin: const EdgeInsets.only(top: 4),
-                                    decoration: BoxDecoration(
-                                      color: isDarkMode ? textColor : const Color(0xFF1E7431),
-                                      shape: BoxShape.circle,
-                                    ),
-                                  ),
                               ],
                             ),
                           ),

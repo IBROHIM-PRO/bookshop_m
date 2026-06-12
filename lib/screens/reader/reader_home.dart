@@ -1,8 +1,11 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/book.dart';
 import '../../services/api_service.dart';
+import '../../services/websocket_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../notifications_feed.dart';
@@ -14,6 +17,8 @@ import 'reader_stats.dart';
 import 'my_books_screen.dart';
 import 'leaderboard_screen.dart';
 import '../../widgets/book_3d.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import '../chat/chat_list_screen.dart';
 
 class ReaderHomeScreen extends StatefulWidget {
   const ReaderHomeScreen({super.key});
@@ -25,6 +30,7 @@ class ReaderHomeScreen extends StatefulWidget {
 class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
   int _currentIndex = 0;
   int _librarySubTab = 0; // 0 = Мағоза, 1 = Китобҳои ман
+  bool _showHeaderToggle = false;
   List<Book> _books = [];
   List<dynamic> _categories = [];
   bool _isLoading = true;
@@ -33,6 +39,8 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
 
   // Cart state — managed here and shared to CartScreen
   final List<CartItem> _cartItems = [];
+  int _unreadNotificationCount = 0;
+  StreamSubscription? _wsSubscription;
 
   // Retry logic
   int _retryCount = 0;
@@ -43,6 +51,43 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
   void initState() {
     super.initState();
     _fetchData();
+    _connectWebSocket();
+  }
+
+  void _connectWebSocket() {
+    _wsSubscription = WebSocketService().messageStream.listen((data) {
+      final type = data['type'] as String?;
+      if (type != 'login_approval_request' &&
+          type != 'admin_login_approval_request' &&
+          type != 'force_logout' &&
+          type != 'chat_message' &&
+          type != 'chat_message_edit' &&
+          type != 'chat_message_delete') {
+        if (!mounted) return;
+        setState(() {
+          _unreadNotificationCount++;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _wsSubscription?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _fetchNotificationCount() async {
+    try {
+      final unreadResponse = await ApiService.get('/api/notifications/unread-count');
+      if (unreadResponse.statusCode == 200) {
+        final unreadData = jsonDecode(unreadResponse.body);
+        if (!mounted) return;
+        setState(() {
+          _unreadNotificationCount = unreadData['count'] ?? 0;
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _fetchData() async {
@@ -68,6 +113,7 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
             _isLoading = false;
             _retryCount = 0;
           });
+          _fetchNotificationCount();
           return;
         } else {
           attempt++;
@@ -131,91 +177,25 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
     final primaryColor = theme.colorScheme.primary;
     final isDarkMode = theme.brightness == Brightness.dark;
 
-    return Column(
-      children: [
-        // Premium Sub-Tab Switcher
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-          child: Container(
-            height: 48,
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: isDarkMode ? Colors.white10 : Colors.black.withOpacity(0.05),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: isDarkMode ? Colors.white10 : Colors.black12),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => setState(() => _librarySubTab = 0),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: _librarySubTab == 0 ? primaryColor : Colors.transparent,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        'Мағоза',
-                        style: TextStyle(
-                          color: _librarySubTab == 0
-                              ? (isDarkMode ? Colors.black : Colors.white)
-                              : (isDarkMode ? Colors.white60 : Colors.black54),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => setState(() => _librarySubTab = 1),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: _librarySubTab == 1 ? primaryColor : Colors.transparent,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        'Китобҳои ман',
-                        style: TextStyle(
-                          color: _librarySubTab == 1
-                              ? (isDarkMode ? Colors.black : Colors.white)
-                              : (isDarkMode ? Colors.white60 : Colors.black54),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-
-        Expanded(
-          child: _librarySubTab == 0
-              ? RefreshIndicator(
-                  onRefresh: _fetchData,
-                  color: primaryColor,
-                  child: _buildShopContent(),
-                )
-              : const MyBooksScreen(showAppBar: false),
-        ),
-      ],
+    return Container(
+      color: isDarkMode ? const Color(0xFF0D120E) : const Color(0xFFF1F8F4),
+      child: _librarySubTab == 0
+          ? RefreshIndicator(
+              onRefresh: _fetchData,
+              color: primaryColor,
+              child: _buildShopContent(),
+            )
+          : const MyBooksScreen(showAppBar: false),
     );
   }
 
   Widget _buildShopContent() {
     final theme = Theme.of(context);
-    final primaryColor = theme.colorScheme.primary;
     final isDarkMode = theme.brightness == Brightness.dark;
     final textColor = isDarkMode ? Colors.white : Colors.black;
 
     if (_isLoading) {
-      return Center(child: CircularProgressIndicator(color: primaryColor));
+      return const Center(child: CircularProgressIndicator(color: Color(0xFF1E7431)));
     }
 
     return Column(
@@ -226,19 +206,20 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
           child: TextField(
             style: TextStyle(color: textColor),
             decoration: InputDecoration(
-              hintText: 'Ҷустуҷӯи китобҳо ё муаллифон...',
-              hintStyle: TextStyle(color: textColor.withOpacity(0.5)),
-              prefixIcon: Icon(Icons.search, color: primaryColor),
+              hintText: 'Чустучу',
+              hintStyle: TextStyle(color: textColor.withOpacity(0.4)),
+              suffixIcon: Icon(Icons.search, color: isDarkMode ? const Color(0xFFA3E635) : const Color(0xFF1E7431)),
               filled: true,
-              fillColor: isDarkMode ? Colors.white10 : Colors.black.withOpacity(0.05),
+              fillColor: isDarkMode ? const Color(0xFF161E18) : const Color(0xFFE8ECE9),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide(color: isDarkMode ? Colors.white10 : Colors.black12),
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: isDarkMode ? Colors.white10 : Colors.grey.shade300, width: 1),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide(color: primaryColor, width: 2),
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFF1E7431), width: 1.5),
               ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             ),
             onChanged: (val) => setState(() => _searchQuery = val),
           ),
@@ -253,12 +234,22 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
               ChoiceChip(
                 label: const Text('Ҳама'),
                 selected: _selectedCategoryId == null,
-                selectedColor: primaryColor,
-                backgroundColor: isDarkMode ? Colors.white10 : Colors.black.withOpacity(0.05),
+                selectedColor: const Color(0xFF1E7431),
+                backgroundColor: isDarkMode ? const Color(0xFF161E18) : Colors.white,
                 labelStyle: TextStyle(
                   color: _selectedCategoryId == null
-                      ? (isDarkMode ? Colors.black : Colors.white)
-                      : (isDarkMode ? Colors.white60 : Colors.black54),
+                      ? Colors.white
+                      : (isDarkMode ? Colors.white70 : const Color(0xFF1E7431)),
+                  fontWeight: FontWeight.w500,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  side: BorderSide(
+                    color: _selectedCategoryId == null
+                        ? const Color(0xFF1E7431)
+                        : const Color(0xFF1E7431).withOpacity(0.5),
+                    width: 1.2,
+                  ),
                 ),
                 onSelected: (selected) {
                   if (selected) setState(() => _selectedCategoryId = null);
@@ -274,12 +265,22 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
                   child: ChoiceChip(
                     label: Text(catName),
                     selected: isSelected,
-                    selectedColor: primaryColor,
-                    backgroundColor: isDarkMode ? Colors.white10 : Colors.black.withOpacity(0.05),
+                    selectedColor: const Color(0xFF1E7431),
+                    backgroundColor: isDarkMode ? const Color(0xFF161E18) : Colors.white,
                     labelStyle: TextStyle(
                       color: isSelected
-                          ? (isDarkMode ? Colors.black : Colors.white)
-                          : (isDarkMode ? Colors.white60 : Colors.black54),
+                          ? Colors.white
+                          : (isDarkMode ? Colors.white70 : const Color(0xFF1E7431)),
+                      fontWeight: FontWeight.w500,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      side: BorderSide(
+                        color: isSelected
+                            ? const Color(0xFF1E7431)
+                            : const Color(0xFF1E7431).withOpacity(0.5),
+                        width: 1.2,
+                      ),
                     ),
                     onSelected: (selected) => setState(() => _selectedCategoryId = selected ? catId : null),
                   ),
@@ -304,9 +305,9 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
                   padding: const EdgeInsets.all(16),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                    childAspectRatio: 0.65,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 0.62,
                   ),
                   itemCount: _filteredBooks.length,
                   itemBuilder: (context, index) {
@@ -325,13 +326,16 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
                       },
                       child: Container(
                         decoration: BoxDecoration(
-                          color: Theme.of(context).cardColor,
+                          color: isDarkMode ? const Color(0xFF161E18) : Colors.white,
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: isDarkMode ? Colors.white.withOpacity(0.08) : const Color(0xFFD1E2D5)),
+                          border: Border.all(
+                            color: isDarkMode ? Colors.white.withOpacity(0.08) : const Color(0xFF1E7431).withOpacity(0.15),
+                            width: 1.2,
+                          ),
                           boxShadow: isDarkMode ? [] : [
                             BoxShadow(
-                              color: const Color(0xFF228B22).withOpacity(0.04),
-                              blurRadius: 10,
+                              color: Colors.black.withOpacity(0.04),
+                              blurRadius: 8,
                               offset: const Offset(0, 4),
                             ),
                           ],
@@ -339,38 +343,51 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Book Cover
+                            // Book Cover (Flat)
                             Expanded(
                               child: Stack(
                                 children: [
-                                  Center(
-                                    child: Padding(
-                                      padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
-                                      child: Book3D(
-                                        imageUrl: book.imageUrl,
-                                        title: book.title,
-                                        width: 100,
-                                        height: 145,
-                                        depth: 18,
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(14),
+                                      child: CachedNetworkImage(
+                                        imageUrl: ApiService.getFullImageUrl(book.imageUrl),
+                                        fit: BoxFit.cover,
+                                        width: double.infinity,
+                                        height: double.infinity,
+                                        placeholder: (context, url) => Container(
+                                          color: isDarkMode ? Colors.white10 : Colors.grey.shade100,
+                                          child: const Center(
+                                            child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF1E7431)),
+                                          ),
+                                        ),
+                                        errorWidget: (context, url, error) => Container(
+                                          color: isDarkMode ? Colors.white10 : Colors.grey.shade100,
+                                          child: const Icon(Icons.broken_image, color: Colors.grey),
+                                        ),
                                       ),
                                     ),
                                   ),
                                   Positioned(
-                                    top: 8,
-                                    left: 8,
+                                    top: 18,
+                                    left: 18,
                                     child: _buildTypeTag(book.bookType),
                                   ),
                                   if (book.bookType != 'Electronic' && book.stockQuantity == 0)
                                     Positioned(
-                                      top: 8,
-                                      right: 8,
+                                      top: 18,
+                                      right: 18,
                                       child: Container(
                                         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                                         decoration: BoxDecoration(
-                                          color: Colors.redAccent.withOpacity(0.1),
+                                          color: Colors.redAccent.withOpacity(0.8),
                                           borderRadius: BorderRadius.circular(6),
                                         ),
-                                        child: const Text('Тамом', style: TextStyle(color: Colors.redAccent, fontSize: 10, fontWeight: FontWeight.bold)),
+                                        child: const Text(
+                                          'Тамом',
+                                          style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                        ),
                                       ),
                                     ),
                                 ],
@@ -379,7 +396,7 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
                             
                             // Book Details
                             Padding(
-                              padding: const EdgeInsets.all(12),
+                              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -402,29 +419,19 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
                                     children: [
                                       Text(
                                         '${book.price.toStringAsFixed(0)} TJS',
-                                        style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 13),
+                                        style: const TextStyle(
+                                          color: Color(0xFFF43F5E), // Pink/Red like figma
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
                                       ),
                                       if (canBuy)
                                         GestureDetector(
                                           onTap: () => _addToCart(book),
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                            decoration: BoxDecoration(
-                                              color: textColor.withOpacity(0.1),
-                                              borderRadius: BorderRadius.circular(8),
-                                              border: Border.all(color: textColor.withOpacity(0.2)),
-                                            ),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Icon(Icons.add_shopping_cart, color: textColor, size: 12),
-                                                const SizedBox(width: 2),
-                                                Text(
-                                                  'Харид',
-                                                  style: TextStyle(color: textColor, fontSize: 10, fontWeight: FontWeight.bold),
-                                                ),
-                                              ],
-                                            ),
+                                          child: Icon(
+                                            Icons.shopping_cart_outlined,
+                                            color: isDarkMode ? Colors.white70 : Colors.black87,
+                                            size: 20,
                                           ),
                                         ),
                                     ],
@@ -465,6 +472,18 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
     );
   }
 
+  Widget _buildMenuIcon(Color color) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(width: 20, height: 2, color: color),
+        const SizedBox(height: 4),
+        Container(width: 14, height: 2, color: color),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -493,91 +512,269 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        backgroundColor: theme.appBarTheme.backgroundColor,
-        elevation: 0,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Салом, $userName!',
-              style: TextStyle(color: textColor, fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-        actions: [
-          // Theme Switcher Button
-          IconButton(
-            icon: Icon(
-              isDarkMode ? Icons.wb_sunny_outlined : Icons.nightlight_round,
-              color: textColor,
-            ),
-            onPressed: () {
-              Provider.of<ThemeProvider>(context, listen: false).toggleTheme();
-            },
-            tooltip: 'Ивази тема',
-          ),
-
-          // Notifications button
-          IconButton(
-            icon: Icon(Icons.notifications_outlined, color: textColor),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => Scaffold(
-                    appBar: AppBar(
-                      title: Text('Паёмҳо', style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
-                      backgroundColor: theme.appBarTheme.backgroundColor,
-                      elevation: 0,
-                      iconTheme: IconThemeData(color: textColor),
-                    ),
-                    body: const NotificationsFeedScreen(),
-                  ),
-                ),
-              );
-            },
-            tooltip: 'Паёмҳо',
-          ),
-
-          // Cart button with badge
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              IconButton(
-                icon: Icon(Icons.shopping_cart_outlined, color: textColor),
-                onPressed: _openCart,
-                tooltip: 'Сабади харид',
-              ),
-              if (_cartCount > 0)
-                Positioned(
-                  top: 6,
-                  right: 6,
-                  child: Container(
-                    width: 18,
-                    height: 18,
-                    decoration: BoxDecoration(
-                      color: primaryColor,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: Text(
-                        '$_cartCount',
-                        style: TextStyle(
-                          color: isDarkMode ? Colors.black : Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
+      appBar: _currentIndex == 3
+          ? null
+          : (_currentIndex == 0
+              ? AppBar(
+                  backgroundColor: isDarkMode ? Colors.black : Colors.white,
+                  elevation: 0,
+                  centerTitle: true,
+                  leadingWidth: 56,
+                  leading: _showHeaderToggle
+                      ? IconButton(
+                          icon: Icon(Icons.close, color: textColor),
+                          onPressed: () => setState(() => _showHeaderToggle = false),
+                        )
+                      : IconButton(
+                          onPressed: () => setState(() => _showHeaderToggle = true),
+                          icon: _buildMenuIcon(textColor),
                         ),
-                      ),
+                  title: _showHeaderToggle
+                      ? Container(
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color: isDarkMode ? Colors.white10 : Colors.black.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              GestureDetector(
+                                onTap: () => setState(() => _librarySubTab = 0),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: _librarySubTab == 0 ? const Color(0xFF1E7431) : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    'Мағоза',
+                                    style: TextStyle(
+                                      color: _librarySubTab == 0 ? Colors.white : (isDarkMode ? Colors.white70 : Colors.black54),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () => setState(() => _librarySubTab = 1),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: _librarySubTab == 1 ? const Color(0xFF1E7431) : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    'Китобҳои ман',
+                                    style: TextStyle(
+                                      color: _librarySubTab == 1 ? Colors.white : (isDarkMode ? Colors.white70 : Colors.black54),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : Text(
+                          _librarySubTab == 0 ? 'Мағоза' : 'Китобҳои ман',
+                          style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 20),
+                        ),
+                  actions: [
+                    Stack(
+                      clipBehavior: Clip.none,
+                      alignment: Alignment.center,
+                      children: [
+                        IconButton(
+                          icon: SvgPicture.asset(
+                            'assets/logo/logoheader/Frame 1984078266.svg',
+                            height: 28,
+                            colorFilter: ColorFilter.mode(
+                              isDarkMode ? Colors.white : Colors.black,
+                              BlendMode.srcIn,
+                            ),
+                          ),
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => const NotificationsFeedScreen())
+                            ).then((_) => _fetchNotificationCount());
+                          },
+                        ),
+                        if (_unreadNotificationCount > 0)
+                          Positioned(
+                            top: 6,
+                            right: 6,
+                            child: Container(
+                              width: 18,
+                              height: 18,
+                              decoration: const BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '$_unreadNotificationCount',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
+                    Stack(
+                      clipBehavior: Clip.none,
+                      alignment: Alignment.center,
+                      children: [
+                        IconButton(
+                          icon: SvgPicture.asset(
+                            'assets/logo/logoheader/Group 44376.svg',
+                            height: 24,
+                            colorFilter: ColorFilter.mode(
+                              isDarkMode ? Colors.white : Colors.black,
+                              BlendMode.srcIn,
+                            ),
+                          ),
+                          onPressed: _openCart,
+                          tooltip: 'Сабади харид',
+                        ),
+                        if (_cartCount > 0)
+                          Positioned(
+                            top: 6,
+                            right: 6,
+                            child: Container(
+                              width: 18,
+                              height: 18,
+                              decoration: const BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '$_cartCount',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                )
+              : AppBar(
+                  backgroundColor: isDarkMode ? Colors.black : Colors.white,
+                  elevation: 0,
+                  title: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Салом, $userName!',
+                        style: TextStyle(color: textColor, fontSize: 20, fontWeight: FontWeight.bold),
+                      ),
+                    ],
                   ),
-                ),
-            ],
-          ),
-        ],
-      ),
+                  actions: [
+                    Stack(
+                      clipBehavior: Clip.none,
+                      alignment: Alignment.center,
+                      children: [
+                        IconButton(
+                          icon: SvgPicture.asset(
+                            'assets/logo/logoheader/Frame 1984078266.svg',
+                            height: 28,
+                            colorFilter: ColorFilter.mode(
+                              isDarkMode ? Colors.white : Colors.black,
+                              BlendMode.srcIn,
+                            ),
+                          ),
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => const NotificationsFeedScreen())
+                            ).then((_) => _fetchNotificationCount());
+                          },
+                        ),
+                        if (_unreadNotificationCount > 0)
+                          Positioned(
+                            top: 6,
+                            right: 6,
+                            child: Container(
+                              width: 18,
+                              height: 18,
+                              decoration: const BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '$_unreadNotificationCount',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    Stack(
+                      clipBehavior: Clip.none,
+                      alignment: Alignment.center,
+                      children: [
+                        IconButton(
+                          icon: SvgPicture.asset(
+                            'assets/logo/logoheader/Group 44376.svg',
+                            height: 24,
+                            colorFilter: ColorFilter.mode(
+                              isDarkMode ? Colors.white : Colors.black,
+                              BlendMode.srcIn,
+                            ),
+                          ),
+                          onPressed: _openCart,
+                          tooltip: 'Сабади харид',
+                        ),
+                        if (_cartCount > 0)
+                          Positioned(
+                            top: 6,
+                            right: 6,
+                            child: Container(
+                              width: 18,
+                              height: 18,
+                              decoration: const BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '$_cartCount',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                )),
       body: tabs[_currentIndex],
       bottomNavigationBar: Container(
-        height: 70,
+        height: 73,
         decoration: BoxDecoration(
           color: theme.brightness == Brightness.dark ? theme.cardColor : Colors.white,
           border: Border(
@@ -591,11 +788,11 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildBottomNavItem(0, Icons.library_books, 'Китобхона', theme),
-              _buildBottomNavItem(1, Icons.assignment_turned_in, 'Тестҳо', theme),
-              _buildBottomNavItem(2, Icons.bar_chart, 'Омор', theme),
-              _buildBottomNavItem(3, Icons.leaderboard_outlined, 'Рейтинг', theme),
-              _buildBottomNavItem(4, Icons.person_outline, 'Профил', theme),
+              _buildBottomNavItem(0, 'assets/logo/logosneckbar/Group 4.svg', 'Маркет', theme),
+              _buildBottomNavItem(1, 'assets/logo/logosneckbar/Group 3.svg', 'Егзамен', theme),
+              _buildBottomNavItem(2, 'assets/logo/logosneckbar/Group 2.svg', 'Статистик', theme),
+              _buildBottomNavItem(3, 'assets/logo/logosneckbar/Group 5.svg', 'Топ', theme),
+              _buildBottomNavItem(4, 'assets/logo/logosneckbar/Group 6.svg', 'Профил', theme),
             ],
           ),
         ),
@@ -603,12 +800,12 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
     );
   }
 
-  Widget _buildBottomNavItem(int index, IconData icon, String label, ThemeData theme) {
+  Widget _buildBottomNavItem(int index, String iconAsset, String label, ThemeData theme) {
     final isSelected = _currentIndex == index;
     final isDarkMode = theme.brightness == Brightness.dark;
 
-    final Color activeColor = isDarkMode ? Colors.white : const Color(0xFF1E7431);
-    final Color inactiveColor = isDarkMode ? Colors.white.withOpacity(0.4) : const Color(0xFF8A9A8E);
+    final Color activeColor = isDarkMode ? Colors.white : const Color(0xFF22873B);
+    final Color inactiveColor = isDarkMode ? Colors.white.withOpacity(0.5) : Colors.black.withOpacity(0.5);
     final Color itemColor = isSelected ? activeColor : inactiveColor;
 
     return Expanded(
@@ -619,18 +816,19 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              color: itemColor,
-              size: 22,
+            SvgPicture.asset(
+              iconAsset,
+              width: 24,
+              height: 24,
+              colorFilter: ColorFilter.mode(itemColor, BlendMode.srcIn),
             ),
             const SizedBox(height: 4),
             Text(
               label,
               style: TextStyle(
                 color: itemColor,
-                fontSize: 10,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
               ),
             ),
           ],

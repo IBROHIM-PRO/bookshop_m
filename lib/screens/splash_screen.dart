@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../widgets/eduspace_logo.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class SplashScreen extends StatefulWidget {
   final Future<bool> autoLoginFuture;
@@ -117,14 +117,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
-          gradient: RadialGradient(
-            colors: [
-              Color(0xFF268E3F), // Lighter green center
-              Color(0xFF165424), // Darker green edges
-            ],
-            center: Alignment.center,
-            radius: 1.2,
-          ),
+          color: Color(0xFF22873B), // Match native splash color
         ),
         child: Center(
           child: Column(
@@ -135,9 +128,10 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                 opacity: _logoFade,
                 child: ScaleTransition(
                   scale: _logoScale,
-                  child: const EduSpaceLogo(
-                    size: 140,
-                    isWhiteBackground: true, // White circle with green logo inside
+                  child: SvgPicture.asset(
+                    'assets/logo/Ellipse 2.svg',
+                    width: 140,
+                    height: 140,
                   ),
                 ),
               ),
@@ -151,10 +145,10 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                   child: const Text(
                     'EduSpace',
                     style: TextStyle(
-                      fontSize: 42,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 44,
+                      fontWeight: FontWeight.w500,
+                      fontFamily: 'serif',
                       color: Colors.white,
-                      letterSpacing: 1.8,
                     ),
                   ),
                 ),
@@ -167,12 +161,13 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                 child: SlideTransition(
                   position: _subTitleSlide,
                   child: Text(
-                    'Learning Center',
+                    'Маркази омузишӣ',
                     style: TextStyle(
                       fontSize: 18,
-                      color: Colors.white.withOpacity(0.85),
+                      color: Colors.white.withOpacity(0.9),
+                      fontFamily: 'serif',
                       letterSpacing: 1.2,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w400,
                     ),
                   ),
                 ),

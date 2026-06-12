@@ -110,7 +110,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
     final theme = Theme.of(context);
     final textColor = isDarkMode ? Colors.white : Colors.black;
-    final backgroundColor = isDarkMode ? Colors.black : const Color(0xFFEBF3ED);
+    final backgroundColor = isDarkMode ? Colors.black : const Color(0xFFF1F8F4);
 
     return Scaffold(
       backgroundColor: backgroundColor,

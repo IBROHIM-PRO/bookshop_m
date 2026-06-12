@@ -9,7 +9,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ApiService {
   static VoidCallback? onUnauthorized;
 
-  static const List<String> candidateHosts = ['192.168.0.105:5179', '10.74.7.83:5179'];
+  static const List<String> candidateHosts = [
+    '192.168.0.107:5179',
+    'localhost:5179',
+    '10.0.2.2:5179',
+    '10.74.7.83:5179',
+  ];
   static int _currentHostIndex = 0;
 
   static String get serverHost => candidateHosts[_currentHostIndex];
@@ -52,26 +57,33 @@ class ApiService {
     return headers;
   }
 
-  static Future<http.Response> _runWithFailover(Future<http.Response> Function() requestFn) async {
+  static Future<http.Response> _runWithFailover(Future<http.Response> Function(String urlPrefix) requestFn) async {
+    int startIndex = _currentHostIndex;
     int attempts = 0;
     while (attempts < candidateHosts.length) {
+      int idx = (startIndex + attempts) % candidateHosts.length;
+      String currentBaseUrl = 'http://${candidateHosts[idx]}';
       try {
-        return await requestFn();
+        final response = await requestFn(currentBaseUrl);
+        if (_currentHostIndex != idx) {
+          _currentHostIndex = idx;
+          debugPrint('Switched active host to: ${candidateHosts[idx]}');
+        }
+        return response;
       } catch (e) {
         attempts++;
-        debugPrint('Request error on $serverHost: $e. Attempts: $attempts/${candidateHosts.length}');
+        debugPrint('Request error on ${candidateHosts[idx]}: $e. Attempts: $attempts/${candidateHosts.length}');
         if (attempts >= candidateHosts.length) {
           rethrow;
         }
-        switchHost();
       }
     }
     throw Exception('All hosts failed');
   }
 
   static Future<http.Response> get(String endpoint) async {
-    return _runWithFailover(() async {
-      final url = Uri.parse('$baseUrl$endpoint');
+    return _runWithFailover((urlPrefix) async {
+      final url = Uri.parse('$urlPrefix$endpoint');
       final headers = await _getHeaders();
       final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 5));
       _checkResponse(response);
@@ -80,8 +92,8 @@ class ApiService {
   }
 
   static Future<http.Response> post(String endpoint, Map<String, dynamic> body) async {
-    return _runWithFailover(() async {
-      final url = Uri.parse('$baseUrl$endpoint');
+    return _runWithFailover((urlPrefix) async {
+      final url = Uri.parse('$urlPrefix$endpoint');
       final headers = await _getHeaders();
       final response = await http.post(url, headers: headers, body: jsonEncode(body)).timeout(const Duration(seconds: 5));
       _checkResponse(response);
@@ -89,9 +101,19 @@ class ApiService {
     });
   }
 
+  static Future<http.Response> postWithTimeout(String endpoint, Map<String, dynamic> body, Duration timeout) async {
+    return _runWithFailover((urlPrefix) async {
+      final url = Uri.parse('$urlPrefix$endpoint');
+      final headers = await _getHeaders();
+      final response = await http.post(url, headers: headers, body: jsonEncode(body)).timeout(timeout);
+      _checkResponse(response);
+      return response;
+    });
+  }
+
   static Future<http.Response> put(String endpoint, Map<String, dynamic> body) async {
-    return _runWithFailover(() async {
-      final url = Uri.parse('$baseUrl$endpoint');
+    return _runWithFailover((urlPrefix) async {
+      final url = Uri.parse('$urlPrefix$endpoint');
       final headers = await _getHeaders();
       final response = await http.put(url, headers: headers, body: jsonEncode(body)).timeout(const Duration(seconds: 5));
       _checkResponse(response);
@@ -100,8 +122,8 @@ class ApiService {
   }
 
   static Future<http.Response> delete(String endpoint) async {
-    return _runWithFailover(() async {
-      final url = Uri.parse('$baseUrl$endpoint');
+    return _runWithFailover((urlPrefix) async {
+      final url = Uri.parse('$urlPrefix$endpoint');
       final headers = await _getHeaders();
       final response = await http.delete(url, headers: headers).timeout(const Duration(seconds: 5));
       _checkResponse(response);
@@ -110,8 +132,8 @@ class ApiService {
   }
 
   static Future<http.Response> uploadFile(String filePath, String fileName) async {
-    return _runWithFailover(() async {
-      final url = Uri.parse('$baseUrl/api/StaticFile');
+    return _runWithFailover((urlPrefix) async {
+      final url = Uri.parse('$urlPrefix/api/StaticFile');
       final request = http.MultipartRequest('POST', url);
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');
@@ -131,9 +153,9 @@ class ApiService {
   }
 
   static Future<http.Response> uploadAvatar(String filePath, String fileName, {int? userId}) async {
-    return _runWithFailover(() async {
+    return _runWithFailover((urlPrefix) async {
       final endpoint = userId != null ? '/api/auth/users/$userId/avatar' : '/api/auth/profile/avatar';
-      final url = Uri.parse('$baseUrl$endpoint');
+      final url = Uri.parse('$urlPrefix$endpoint');
       final request = http.MultipartRequest('POST', url);
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');
@@ -159,8 +181,8 @@ class ApiService {
     String? filePath,
     String? fileName,
   }) async {
-    return _runWithFailover(() async {
-      final url = Uri.parse('$baseUrl$endpoint');
+    return _runWithFailover((urlPrefix) async {
+      final url = Uri.parse('$urlPrefix$endpoint');
       final request = http.MultipartRequest('POST', url);
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');
@@ -203,6 +225,7 @@ class ApiService {
       } catch (_) {}
       return url;
     }
-    return '$baseUrl$url';
+    final cleanUrl = url.startsWith('/') ? url : '/$url';
+    return '$baseUrl$cleanUrl';
   }
 }

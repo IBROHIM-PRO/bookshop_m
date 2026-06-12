@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class StudentResultsScreen extends StatefulWidget {
   final int studentId;
@@ -54,9 +55,16 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
   }
 
   void _showAttemptDetails(int attemptId) async {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDarkMode ? Colors.white : Colors.black87;
+    final subTextColor = isDarkMode ? Colors.white70 : Colors.black54;
+    final cardBg = isDarkMode ? const Color(0xFF162218) : const Color(0xFFF3F4F6);
+    final borderColor = isDarkMode ? const Color(0xFF2E3D32) : const Color(0xFFE5E7EB);
+    final innerBg = isDarkMode ? Colors.black12 : Colors.white;
+
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF162218),
+      backgroundColor: isDarkMode ? const Color(0xFF162218) : Colors.white,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.only(
@@ -78,7 +86,7 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
                   return const Center(child: CircularProgressIndicator(color: Color(0xFF1E7431)));
                 }
                 if (snapshot.hasError || snapshot.data?.statusCode != 200) {
-                  return const Center(child: Text('Хатогӣ дар боркунии маълумот', style: TextStyle(color: Colors.white)));
+                  return Center(child: Text('Хатогӣ дар боркунии маълумот', style: TextStyle(color: textColor)));
                 }
 
                 final detail = jsonDecode(snapshot.data!.body);
@@ -92,20 +100,23 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
                       child: Container(
                         width: 40,
                         height: 4,
-                        decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+                        decoration: BoxDecoration(
+                          color: isDarkMode ? Colors.white24 : Colors.black26, 
+                          borderRadius: BorderRadius.circular(2),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 24),
                     Text(
                       detail['testTitle'] ?? 'Тафсилоти кӯшиши супоридан',
-                      style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'Нишондиҳанда: ${detail['earnedPoints']} / ${detail['totalPoints']} балл',
-                      style: const TextStyle(color: Color(0xFFA3E635), fontWeight: FontWeight.bold),
+                      style: const TextStyle(color: Color(0xFF1E7431), fontWeight: FontWeight.bold),
                     ),
-                    const Divider(color: Color(0xFF2E3D32), height: 32),
+                    Divider(color: borderColor, height: 32),
 
                     ...answers.map((ans) {
                       final bool isClosed = ans['questionType'] == 'Closed';
@@ -117,9 +128,9 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
                         margin: const EdgeInsets.only(bottom: 16),
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF162218),
+                          color: cardBg,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xFF2E3D32)),
+                          border: Border.all(color: borderColor),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -131,7 +142,7 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
                                   ans['questionType'] == 'TrueFalse'
                                       ? 'Рост/Дурӯғ'
                                       : (isClosed ? 'Саволи хаттӣ' : 'Саволи интихобӣ'),
-                                  style: TextStyle(color: isClosed ? Colors.amber : const Color(0xFFA3E635), fontSize: 11, fontWeight: FontWeight.bold),
+                                  style: TextStyle(color: isClosed ? Colors.amber : const Color(0xFF1E7431), fontSize: 11, fontWeight: FontWeight.bold),
                                 ),
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -157,27 +168,28 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
                             const SizedBox(height: 12),
                             Text(
                               ans['questionText'] ?? '',
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                              style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 14),
                             ),
                             const SizedBox(height: 12),
                             Container(
                               width: double.infinity,
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: Colors.black12,
+                                color: innerBg,
                                 borderRadius: BorderRadius.circular(10),
+                                border: isDarkMode ? null : Border.all(color: const Color(0xFFE5E7EB)),
                               ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text(
+                                  Text(
                                     'Ҷавоби хонанда:',
-                                    style: TextStyle(color: Colors.white30, fontSize: 10, fontWeight: FontWeight.bold),
+                                    style: TextStyle(color: isDarkMode ? Colors.white30 : Colors.black38, fontSize: 10, fontWeight: FontWeight.bold),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
                                     ans['studentAnswer'] ?? 'Ҷавоб дода нашудааст',
-                                    style: const TextStyle(color: Colors.white70, fontSize: 13),
+                                    style: TextStyle(color: textColor, fontSize: 13),
                                   ),
                                 ],
                               ),
@@ -205,12 +217,23 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final scaffoldBg = isDarkMode ? const Color(0xFF0D120E) : const Color(0xFFF1F8F4);
+    final cardBg = isDarkMode ? const Color(0xFF162218) : Colors.white;
+    final textColor = isDarkMode ? Colors.white : Colors.black87;
+    final subTextColor = isDarkMode ? Colors.white70 : Colors.black54;
+    final borderColor = isDarkMode ? const Color(0xFF2E3D32) : const Color(0xFFE5E7EB);
+
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: const Color(0xFF0D120E),
+        backgroundColor: scaffoldBg,
         appBar: AppBar(
-          title: Text(widget.studentName),
-          backgroundColor: const Color(0xFF162218),
+          title: Text(
+            widget.studentName,
+            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+          ),
+          backgroundColor: isDarkMode ? Colors.black : Colors.white,
+          iconTheme: IconThemeData(color: isDarkMode ? Colors.white : Colors.black),
         ),
         body: const Center(child: CircularProgressIndicator(color: Color(0xFF1E7431))),
       );
@@ -222,10 +245,17 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
     final paperResults = _stats?['paperTestResults'] as List? ?? [];
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0D120E),
+      backgroundColor: scaffoldBg,
       appBar: AppBar(
-        title: Text(widget.studentName, style: const TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: const Color(0xFF162218),
+        title: Text(
+          widget.studentName,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: isDarkMode ? Colors.white : Colors.black,
+          ),
+        ),
+        backgroundColor: isDarkMode ? Colors.black : Colors.white,
+        iconTheme: IconThemeData(color: isDarkMode ? Colors.white : Colors.black),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -234,9 +264,9 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: const Color(0xFF162218),
+              color: cardBg,
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: const Color(0xFF2E3D32)),
+              border: Border.all(color: borderColor),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -245,16 +275,16 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
                   children: [
                     CircleAvatar(
                       radius: 28,
-                      backgroundColor: Colors.white.withOpacity(0.1),
+                      backgroundColor: isDarkMode ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.05),
                       backgroundImage: widget.studentImageUrl != null && widget.studentImageUrl!.isNotEmpty
-                          ? NetworkImage(ApiService.getFullImageUrl(widget.studentImageUrl))
+                          ? CachedNetworkImageProvider(ApiService.getFullImageUrl(widget.studentImageUrl))
                           : null,
                       child: widget.studentImageUrl != null && widget.studentImageUrl!.isNotEmpty
                           ? null
                           : Text(
                               _getInitials(widget.studentName),
-                              style: const TextStyle(
-                                color: Colors.white,
+                              style: TextStyle(
+                                color: textColor,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 18,
                               ),
@@ -267,12 +297,12 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
                         children: [
                           Text(
                             widget.studentName,
-                            style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                            style: TextStyle(color: textColor, fontSize: 20, fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 4),
                           Text(
                             widget.studentEmail,
-                            style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13),
+                            style: TextStyle(color: subTextColor, fontSize: 13),
                           ),
                         ],
                       ),
@@ -289,7 +319,10 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
                         'Китобҳо',
                         '$booksCount',
                         Icons.menu_book,
-                        Colors.tealAccent,
+                        Colors.teal,
+                        isDarkMode,
+                        textColor,
+                        subTextColor,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -298,7 +331,10 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
                         'Тестҳо',
                         '${attempts.length}',
                         Icons.quiz,
-                        Colors.orangeAccent,
+                        Colors.orange,
+                        isDarkMode,
+                        textColor,
+                        subTextColor,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -307,7 +343,10 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
                         'Баҳои миёна',
                         '$average%',
                         Icons.grade,
-                        Colors.pinkAccent,
+                        Colors.pink,
+                        isDarkMode,
+                        textColor,
+                        subTextColor,
                       ),
                     ),
                   ],
@@ -317,9 +356,9 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
           ),
           const SizedBox(height: 24),
 
-          const Text(
+          Text(
             'Натиҷаҳои санҷишҳо (Тестҳо)',
-            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
 
@@ -329,11 +368,11 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
               child: Center(
                 child: Column(
                   children: [
-                    Icon(Icons.quiz_outlined, size: 48, color: Colors.white.withOpacity(0.2)),
+                    Icon(Icons.quiz_outlined, size: 48, color: isDarkMode ? Colors.white.withOpacity(0.2) : Colors.black.withOpacity(0.15)),
                     const SizedBox(height: 12),
                     Text(
                       'То ҳол ягон тест насупоридааст',
-                      style: TextStyle(color: Colors.white.withOpacity(0.4)),
+                      style: TextStyle(color: subTextColor),
                     ),
                   ],
                 ),
@@ -349,16 +388,16 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
               return Container(
                 margin: const EdgeInsets.only(bottom: 12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF162218),
+                  color: cardBg,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFF2E3D32)),
+                  border: Border.all(color: borderColor),
                 ),
                 child: ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   onTap: () => _showAttemptDetails(attemptId),
                   title: Text(
                     a['testTitle'] ?? '',
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
                   ),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -367,12 +406,12 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
                       if (isGraded)
                         Text(
                           'Холҳо: ${a['earnedPoints']} аз ${a['totalPoints']}',
-                          style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+                          style: TextStyle(color: subTextColor, fontSize: 12),
                         )
                       else
                         Text(
                           'Холҳои вариантӣ: ${a['optionEarnedPoints'] ?? a['earnedPoints']} аз ${a['optionTotalPoints'] ?? a['totalPoints']}',
-                          style: TextStyle(color: const Color(0xFFA3E635), fontSize: 12, fontWeight: FontWeight.bold),
+                          style: const TextStyle(color: Color(0xFF1E7431), fontSize: 12, fontWeight: FontWeight.bold),
                         ),
                       if (!isGraded)
                         const Padding(
@@ -396,7 +435,7 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
                       isGraded ? '${percent.toStringAsFixed(0)}%' : 'Тафтиш',
                       style: TextStyle(
                         color: isGraded 
-                            ? (isPassed ? const Color(0xFFA3E635) : Colors.redAccent)
+                            ? (isPassed ? const Color(0xFF1E7431) : Colors.redAccent)
                             : Colors.amber,
                         fontWeight: FontWeight.bold,
                         fontSize: 13,
@@ -408,9 +447,9 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
             }),
 
           const SizedBox(height: 24),
-          const Text(
+          Text(
             'Натиҷаҳои тести қоғазӣ',
-            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
 
@@ -420,11 +459,11 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
               child: Center(
                 child: Column(
                   children: [
-                    Icon(Icons.menu_book_outlined, size: 48, color: Colors.white.withOpacity(0.2)),
+                    Icon(Icons.menu_book_outlined, size: 48, color: isDarkMode ? Colors.white.withOpacity(0.2) : Colors.black.withOpacity(0.15)),
                     const SizedBox(height: 12),
                     Text(
                       'Натиҷаи тестҳои қоғазӣ мавҷуд нест',
-                      style: TextStyle(color: Colors.white.withOpacity(0.4)),
+                      style: TextStyle(color: subTextColor),
                     ),
                   ],
                 ),
@@ -441,21 +480,21 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
               return Container(
                 margin: const EdgeInsets.only(bottom: 12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF162218),
+                  color: cardBg,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFF2E3D32)),
+                  border: Border.all(color: borderColor),
                 ),
                 child: ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   title: Text(
                     subject,
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
                   ),
                   subtitle: Padding(
                     padding: const EdgeInsets.only(top: 4.0),
                     child: Text(
                       'Сана: $dateStr',
-                      style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+                      style: TextStyle(color: subTextColor, fontSize: 12),
                     ),
                   ),
                   trailing: Container(
@@ -467,7 +506,7 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
                     child: Text(
                       '$score балл',
                       style: const TextStyle(
-                        color: Color(0xFFA3E635),
+                        color: Color(0xFF1E7431),
                         fontWeight: FontWeight.bold,
                         fontSize: 13,
                       ),
@@ -481,11 +520,11 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
     );
   }
 
-  Widget _buildSummaryItem(String label, String value, IconData icon, Color color) {
+  Widget _buildSummaryItem(String label, String value, IconData icon, Color color, bool isDarkMode, Color textColor, Color subTextColor) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.02),
+        color: isDarkMode ? Colors.white.withOpacity(0.02) : Colors.black.withOpacity(0.03),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -494,13 +533,13 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
           const SizedBox(height: 8),
           Text(
             value,
-            style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+            style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 4),
           Text(
             label,
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 10),
+            style: TextStyle(color: subTextColor, fontSize: 10),
           ),
         ],
       ),

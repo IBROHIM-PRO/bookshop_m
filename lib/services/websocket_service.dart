@@ -65,7 +65,7 @@ class WebSocketService {
 
     try {
       final uri = Uri.parse(
-        '$_wsBaseUrl/ws/notifications?userId=$userId&role=$role',
+        '${ApiService.wsBaseUrl}/ws/notifications?userId=$userId&role=$role',
       );
 
       _channel = IOWebSocketChannel.connect(
@@ -83,6 +83,7 @@ class WebSocketService {
 
             final type = data['type'] as String?;
             if (type != 'login_approval_request' &&
+                type != 'admin_login_approval_request' &&
                 type != 'force_logout' &&
                 type != 'chat_message' &&
                 type != 'chat_message_edit' &&

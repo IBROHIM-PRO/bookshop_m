@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/book.dart';
 import '../../services/api_service.dart';
 import 'book_details.dart';
@@ -17,8 +18,11 @@ class MyBooksScreen extends StatefulWidget {
 
 class _MyBooksScreenState extends State<MyBooksScreen> {
   List<Book> _books = [];
+  List<dynamic> _categories = [];
   bool _isLoading = true;
   String? _error;
+  String _searchQuery = '';
+  int? _selectedCategoryId;
 
   static const int _maxRetries = 3;
   static const Duration _retryDelay = Duration(seconds: 1);
@@ -29,11 +33,27 @@ class _MyBooksScreenState extends State<MyBooksScreen> {
     _fetchMyBooks();
   }
 
+  List<Book> get _filteredBooks {
+    return _books.where((book) {
+      final matchesSearch = book.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          book.author.toLowerCase().contains(_searchQuery.toLowerCase());
+      final matchesCategory = _selectedCategoryId == null || book.categoryId == _selectedCategoryId;
+      return matchesSearch && matchesCategory;
+    }).toList();
+  }
+
   Future<void> _fetchMyBooks() async {
     setState(() {
       _isLoading = true;
       _error = null;
     });
+    try {
+      final catsResponse = await ApiService.get('/api/categories');
+      if (catsResponse.statusCode == 200) {
+        final catsData = jsonDecode(catsResponse.body);
+        _categories = catsData is List ? catsData : catsData['items'] ?? [];
+      }
+    } catch (_) {}
     await _fetchWithRetry();
   }
 
@@ -126,22 +146,25 @@ class _MyBooksScreenState extends State<MyBooksScreen> {
   Widget _buildBookCard(Book book) {
     final hasPdf = book.pdfUrl != null && book.pdfUrl!.isNotEmpty;
     final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
     final hasContent = book.content != null && book.content!.isNotEmpty;
     final canRead = book.bookType == 'Electronic' || book.bookType == 'Both';
-    final textColor = theme.colorScheme.onSurface;
-    final cardColor = theme.cardColor;
+    final textColor = isDarkMode ? Colors.white : Colors.black;
 
     return GestureDetector(
       onTap: () => _openBook(context, book, preferPdf: hasPdf),
       child: Container(
         decoration: BoxDecoration(
-          color: cardColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: theme.brightness == Brightness.dark ? Colors.white.withOpacity(0.08) : const Color(0xFFD1E2D5)),
-          boxShadow: theme.brightness == Brightness.dark ? [] : [
+          color: isDarkMode ? const Color(0xFF161E18) : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isDarkMode ? Colors.white.withOpacity(0.08) : const Color(0xFF1E7431).withOpacity(0.15),
+            width: 1.2,
+          ),
+          boxShadow: isDarkMode ? [] : [
             BoxShadow(
-              color: const Color(0xFF228B22).withOpacity(0.04),
-              blurRadius: 10,
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 8,
               offset: const Offset(0, 4),
             ),
           ],
@@ -149,31 +172,50 @@ class _MyBooksScreenState extends State<MyBooksScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Муқоваи китоб
+            // Cover Image (Flat)
             Expanded(
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
-                  child: Book3D(
-                    imageUrl: book.imageUrl,
-                    title: book.title,
-                    width: 100,
-                    height: 145,
-                    depth: 18,
+              child: Stack(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: CachedNetworkImage(
+                        imageUrl: ApiService.getFullImageUrl(book.imageUrl),
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        height: double.infinity,
+                        placeholder: (context, url) => Container(
+                          color: isDarkMode ? Colors.white10 : Colors.grey.shade100,
+                          child: const Center(
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF1E7431)),
+                          ),
+                        ),
+                        errorWidget: (context, url, error) => Container(
+                          color: isDarkMode ? Colors.white10 : Colors.grey.shade100,
+                          child: const Icon(Icons.broken_image, color: Colors.grey),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                  Positioned(
+                    top: 18,
+                    left: 18,
+                    child: _buildTypeTag(book.bookType),
+                  ),
+                ],
               ),
             ),
 
-            // Маълумоти китоб
+            // Book Details
             Padding(
-              padding: const EdgeInsets.fromLTRB(10, 8, 10, 4),
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     book.title,
-                    maxLines: 2,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: textColor,
@@ -181,26 +223,24 @@ class _MyBooksScreenState extends State<MyBooksScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(
                     book.author,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: textColor.withOpacity(0.6),
-                      fontSize: 12,
+                      color: textColor.withOpacity(0.5),
+                      fontSize: 11,
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  _buildTypeTag(book.bookType),
                 ],
               ),
             ),
 
-            // Тугмаҳои хондан
+            // Read Buttons
             if (canRead)
               Padding(
-                padding: const EdgeInsets.fromLTRB(8, 2, 8, 10),
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                 child: Row(
                   children: [
                     if (hasPdf)
@@ -232,7 +272,7 @@ class _MyBooksScreenState extends State<MyBooksScreen> {
                 ),
               )
             else
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
           ],
         ),
       ),
@@ -241,12 +281,13 @@ class _MyBooksScreenState extends State<MyBooksScreen> {
 
   Widget _buildBody() {
     final theme = Theme.of(context);
-    final textColor = theme.colorScheme.onSurface;
-    final subTextColor = theme.colorScheme.onSurface.withOpacity(0.6);
+    final isDarkMode = theme.brightness == Brightness.dark;
+    final textColor = isDarkMode ? Colors.white : Colors.black;
+    final subTextColor = textColor.withOpacity(0.6);
 
     if (_isLoading) {
-      return Center(
-        child: CircularProgressIndicator(color: textColor),
+      return const Center(
+        child: CircularProgressIndicator(color: Color(0xFF1E7431)),
       );
     }
 
@@ -265,6 +306,11 @@ class _MyBooksScreenState extends State<MyBooksScreen> {
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: _fetchMyBooks,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1E7431),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
               child: const Text('Боз кӯшиш кунед'),
             ),
           ],
@@ -272,55 +318,144 @@ class _MyBooksScreenState extends State<MyBooksScreen> {
       );
     }
 
-    if (_books.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.menu_book_outlined, size: 80, color: textColor.withOpacity(0.2)),
-            const SizedBox(height: 20),
-            Text(
-              'Дар ҳоли ҳозир китобхонаи шумо холӣ аст.',
-              style: TextStyle(color: subTextColor, fontSize: 16),
+    return Column(
+      children: [
+        // Search Bar
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: TextField(
+            style: TextStyle(color: textColor),
+            decoration: InputDecoration(
+              hintText: 'Чустучу',
+              hintStyle: TextStyle(color: textColor.withOpacity(0.4)),
+              suffixIcon: Icon(Icons.search, color: isDarkMode ? const Color(0xFFA3E635) : const Color(0xFF1E7431)),
+              filled: true,
+              fillColor: isDarkMode ? const Color(0xFF161E18) : const Color(0xFFE8ECE9),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: isDarkMode ? Colors.white10 : Colors.grey.shade300, width: 1),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFF1E7431), width: 1.5),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             ),
-          ],
+            onChanged: (val) => setState(() => _searchQuery = val),
+          ),
         ),
-      );
-    }
 
-    // ✅ GridView — 2 дар як қатор, мисли мағоза
-    return RefreshIndicator(
-      onRefresh: _fetchMyBooks,
-      color: textColor,
-      child: GridView.builder(
-        padding: const EdgeInsets.all(16),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,        // ✅ 2 дар як қатор
-          crossAxisSpacing: 12,     // фосила байни сутунҳо
-          mainAxisSpacing: 12,      // фосила байни қаторҳо
-          childAspectRatio: 0.58,   // баландӣ/паҳнои карт
+        // Category Chips
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: [
+              ChoiceChip(
+                label: const Text('Ҳама'),
+                selected: _selectedCategoryId == null,
+                selectedColor: const Color(0xFF1E7431),
+                backgroundColor: isDarkMode ? const Color(0xFF161E18) : Colors.white,
+                labelStyle: TextStyle(
+                  color: _selectedCategoryId == null
+                      ? Colors.white
+                      : (isDarkMode ? Colors.white70 : const Color(0xFF1E7431)),
+                  fontWeight: FontWeight.w500,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  side: BorderSide(
+                    color: _selectedCategoryId == null
+                        ? const Color(0xFF1E7431)
+                        : const Color(0xFF1E7431).withOpacity(0.5),
+                    width: 1.2,
+                  ),
+                ),
+                onSelected: (selected) {
+                  if (selected) setState(() => _selectedCategoryId = null);
+                },
+              ),
+              const SizedBox(width: 8),
+              ..._categories.map((cat) {
+                final catId = cat['id'] as int;
+                final catName = cat['name'] as String;
+                final isSelected = _selectedCategoryId == catId;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8.0),
+                  child: ChoiceChip(
+                    label: Text(catName),
+                    selected: isSelected,
+                    selectedColor: const Color(0xFF1E7431),
+                    backgroundColor: isDarkMode ? const Color(0xFF161E18) : Colors.white,
+                    labelStyle: TextStyle(
+                      color: isSelected
+                          ? Colors.white
+                          : (isDarkMode ? Colors.white70 : const Color(0xFF1E7431)),
+                      fontWeight: FontWeight.w500,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      side: BorderSide(
+                        color: isSelected
+                            ? const Color(0xFF1E7431)
+                            : const Color(0xFF1E7431).withOpacity(0.5),
+                        width: 1.2,
+                      ),
+                    ),
+                    onSelected: (selected) => setState(() => _selectedCategoryId = selected ? catId : null),
+                  ),
+                );
+              }),
+            ],
+          ),
         ),
-        itemCount: _books.length,
-        itemBuilder: (context, index) => _buildBookCard(_books[index]),
-      ),
+
+        const SizedBox(height: 16),
+
+        Expanded(
+          child: _filteredBooks.isEmpty
+              ? Center(
+                  child: Text(
+                    'Китобҳо ёфт нашуданд',
+                    style: TextStyle(color: textColor.withOpacity(0.6), fontSize: 16),
+                  ),
+                )
+              : RefreshIndicator(
+                  onRefresh: _fetchMyBooks,
+                  color: const Color(0xFF1E7431),
+                  child: GridView.builder(
+                    padding: const EdgeInsets.all(16),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                      childAspectRatio: 0.58,
+                    ),
+                    itemCount: _filteredBooks.length,
+                    itemBuilder: (context, index) => _buildBookCard(_filteredBooks[index]),
+                  ),
+                ),
+        ),
+      ],
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final textColor = theme.colorScheme.onSurface;
+    final isDarkMode = theme.brightness == Brightness.dark;
+    final textColor = isDarkMode ? Colors.white : Colors.black;
 
     if (_isLoading) {
       if (!widget.showAppBar) {
-        return Center(
-          child: CircularProgressIndicator(color: textColor),
+        return const Center(
+          child: CircularProgressIndicator(color: Color(0xFF1E7431)),
         );
       }
       return Scaffold(
-        backgroundColor: theme.scaffoldBackgroundColor,
-        body: Center(
-          child: CircularProgressIndicator(color: textColor),
+        backgroundColor: isDarkMode ? const Color(0xFF0D120E) : const Color(0xFFF1F8F4),
+        body: const Center(
+          child: CircularProgressIndicator(color: Color(0xFF1E7431)),
         ),
       );
     }
@@ -330,9 +465,9 @@ class _MyBooksScreenState extends State<MyBooksScreen> {
     }
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: isDarkMode ? const Color(0xFF0D120E) : const Color(0xFFF1F8F4),
       appBar: AppBar(
-        backgroundColor: theme.appBarTheme.backgroundColor,
+        backgroundColor: isDarkMode ? Colors.black : Colors.white,
         elevation: 0,
         title: Text(
           'Китобҳои ман',
@@ -366,25 +501,25 @@ class _ReadButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final textColor = theme.colorScheme.onSurface;
+    final isDarkMode = theme.brightness == Brightness.dark;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 6),
         decoration: BoxDecoration(
-          color: textColor.withOpacity(0.1),
+          color: const Color(0xFF1E7431).withOpacity(0.08),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: theme.dividerColor),
+          border: Border.all(color: const Color(0xFF1E7431).withOpacity(0.2)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 12, color: textColor),
+            Icon(icon, size: 12, color: const Color(0xFF1E7431)),
             const SizedBox(width: 4),
             Text(
               label,
-              style: TextStyle(
-                color: textColor,
+              style: const TextStyle(
+                color: Color(0xFF1E7431),
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
               ),

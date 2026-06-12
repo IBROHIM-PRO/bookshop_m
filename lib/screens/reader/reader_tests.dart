@@ -6,6 +6,7 @@ import '../../models/paper_test_model.dart';
 import '../../services/api_service.dart';
 import '../../providers/theme_provider.dart';
 import 'test_quiz.dart';
+import 'nmt_variant_screen.dart';
 
 class ReaderTestsScreen extends StatefulWidget {
   const ReaderTestsScreen({super.key});
@@ -27,7 +28,7 @@ class _ReaderTestsScreenState extends State<ReaderTestsScreen> with SingleTicker
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _fetchTestData();
   }
 
@@ -90,11 +91,16 @@ class _ReaderTestsScreenState extends State<ReaderTestsScreen> with SingleTicker
     }
   }
 
-  Widget _buildTestsList(Color textColor, bool isDarkMode) {
-    if (_tests.isEmpty) {
+  Widget _buildTestsList(Color textColor, bool isDarkMode, {required bool showOther}) {
+    final filteredTests = _tests.where((t) {
+      final isOther = t.description != null && t.description!.contains('МТС');
+      return showOther ? isOther : !isOther;
+    }).toList();
+
+    if (filteredTests.isEmpty) {
       return Center(
         child: Text(
-          'Тестҳо айни замон дастрас нестанд',
+          showOther ? 'Тестҳои дигар айни замон дастрас нестанд' : 'Тестҳо айни замон дастрас нестанд',
           style: TextStyle(color: textColor.withOpacity(0.6), fontSize: 16),
         ),
       );
@@ -104,9 +110,9 @@ class _ReaderTestsScreenState extends State<ReaderTestsScreen> with SingleTicker
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: _tests.length,
+      itemCount: filteredTests.length,
       itemBuilder: (context, index) {
-        final test = _tests[index];
+        final test = filteredTests[index];
         return Container(
           margin: const EdgeInsets.only(bottom: 16),
           padding: const EdgeInsets.all(20),
@@ -156,11 +162,20 @@ class _ReaderTestsScreenState extends State<ReaderTestsScreen> with SingleTicker
                   ),
                   ElevatedButton(
                     onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => TestQuizScreen(testId: test.id, testTitle: test.title),
-                        ),
-                      ).then((_) => _fetchTestData());
+                      final isMts = test.description != null && test.description!.contains('МТС');
+                      if (isMts) {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => NmtVariantScreen(testId: test.id, testTitle: test.title),
+                          ),
+                        ).then((_) => _fetchTestData());
+                      } else {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => TestQuizScreen(testId: test.id, testTitle: test.title),
+                          ),
+                        ).then((_) => _fetchTestData());
+                      }
                     },
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -364,8 +379,10 @@ class _ReaderTestsScreenState extends State<ReaderTestsScreen> with SingleTicker
           indicatorColor: textColor,
           labelColor: textColor,
           unselectedLabelColor: textColor.withOpacity(0.4),
+          isScrollable: true,
           tabs: const [
             Tab(text: 'Тестҳои фаъол'),
+            Tab(text: 'Тестҳои дигар'),
             Tab(text: 'Натиҷаҳо'),
             Tab(text: 'Тестҳои қоғазӣ'),
           ],
@@ -378,7 +395,12 @@ class _ReaderTestsScreenState extends State<ReaderTestsScreen> with SingleTicker
               RefreshIndicator(
                 onRefresh: _fetchTestData,
                 color: textColor,
-                child: _buildTestsList(textColor, isDarkMode),
+                child: _buildTestsList(textColor, isDarkMode, showOther: false),
+              ),
+              RefreshIndicator(
+                onRefresh: _fetchTestData,
+                color: textColor,
+                child: _buildTestsList(textColor, isDarkMode, showOther: true),
               ),
               RefreshIndicator(
                 onRefresh: _fetchTestData,

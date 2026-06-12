@@ -157,7 +157,7 @@ class _PdfReaderScreenState extends State<PdfReaderScreen> {
 
     final bgColor = theme.scaffoldBackgroundColor;
     final textColor = theme.colorScheme.onSurface;
-    final appBarColor = theme.appBarTheme.backgroundColor;
+    final appBarColor = theme.brightness == Brightness.dark ? Colors.black : Colors.white;
 
     Widget body;
 

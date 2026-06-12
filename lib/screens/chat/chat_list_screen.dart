@@ -7,6 +7,7 @@ import '../../providers/theme_provider.dart';
 import '../../widgets/app_snackbar.dart';
 import '../../services/websocket_service.dart';
 import 'chat_detail_screen.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class ChatListScreen extends StatefulWidget {
   const ChatListScreen({super.key});
@@ -99,221 +100,270 @@ class _ChatListScreenState extends State<ChatListScreen> {
     }).toList();
 
     return Scaffold(
-      backgroundColor: bgColor,
+      backgroundColor: isDarkMode ? Colors.black : Colors.white,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Title
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
-              child: Text(
-                'Чат',
-                style: TextStyle(
-                  color: textColor,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 28,
-                ),
+            // Header
+            Container(
+              color: isDarkMode ? Colors.black : Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              child: Row(
+                children: [
+                  if (!_isSearching) ...[
+                    Text(
+                      'Чат',
+                      style: TextStyle(
+                        color: textColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 24,
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: Icon(Icons.search, color: textColor, size: 28),
+                      onPressed: () {
+                        setState(() {
+                          _isSearching = true;
+                        });
+                      },
+                    ),
+                  ] else ...[
+                    Expanded(
+                      child: Container(
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: isDarkMode ? Colors.white.withOpacity(0.08) : const Color(0xFFF1F3F5),
+                          borderRadius: BorderRadius.circular(22),
+                          border: Border.all(
+                            color: isDarkMode ? Colors.white24 : const Color(0xFFCBD5E1),
+                            width: 1.0,
+                          ),
+                        ),
+                        child: TextField(
+                          controller: _searchController,
+                          style: TextStyle(color: textColor, fontSize: 15),
+                          decoration: InputDecoration(
+                            hintText: 'Ҷустуҷӯ',
+                            hintStyle: TextStyle(
+                              color: isDarkMode ? Colors.white38 : const Color(0xFF94A3B8),
+                              fontSize: 15,
+                            ),
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+                            suffixIcon: _searchController.text.isNotEmpty
+                                ? IconButton(
+                                    padding: EdgeInsets.zero,
+                                    icon: Icon(Icons.clear, color: isDarkMode ? Colors.white70 : const Color(0xFF64748B), size: 20),
+                                    onPressed: () {
+                                      _searchController.clear();
+                                      setState(() {
+                                        _searchQuery = '';
+                                      });
+                                    },
+                                  )
+                                : null,
+                          ),
+                          onChanged: (val) {
+                            setState(() {
+                              _searchQuery = val;
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    IconButton(
+                      icon: Icon(Icons.search, color: textColor, size: 28),
+                      onPressed: () {
+                        setState(() {
+                          _isSearching = false;
+                          _searchQuery = '';
+                          _searchController.clear();
+                        });
+                      },
+                    ),
+                  ],
+                ],
               ),
             ),
-            
-            // Search Bar
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: isDarkMode ? const Color(0xFF161E18) : Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: BorderSide(
-                    color: isDarkMode ? textColor.withOpacity(0.1) : Colors.grey.withOpacity(0.2),
-                  ),
-                ),
-                child: TextField(
-                  controller: _searchController,
-                  style: TextStyle(color: textColor, fontSize: 16),
-                  decoration: InputDecoration(
-                    hintText: 'Ҷустуҷӯ...',
-                    hintStyle: TextStyle(color: textColor.withOpacity(0.4)),
-                    prefixIcon: Icon(Icons.search, color: textColor.withOpacity(0.4)),
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  ),
-                  onChanged: (val) {
-                    setState(() {
-                      _searchQuery = val;
-                    });
-                  },
-                ),
-              ),
-            ),
-            
-            const SizedBox(height: 8),
 
-            // Contact List
+            // Contact List Container with green background
             Expanded(
-              child: RefreshIndicator(
-                onRefresh: () => _fetchContacts(showLoading: true),
-                color: primaryColor,
-                child: _isLoading
-                    ? Center(child: CircularProgressIndicator(color: primaryColor))
-                    : filteredContacts.isEmpty
-                        ? ListView(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            children: [
-                              SizedBox(height: MediaQuery.of(context).size.height * 0.2),
-                              Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      _searchQuery.isNotEmpty ? Icons.search_off : Icons.chat_bubble_outline,
-                                      size: 64,
-                                      color: textColor.withOpacity(0.2),
-                                    ),
-                                    const SizedBox(height: 16),
-                                    Text(
-                                      _searchQuery.isNotEmpty
-                                          ? 'Натиҷае ёфт нашуд'
-                                          : 'Ягон сӯҳбат ёфт нашуд',
-                                      style: TextStyle(color: textColor.withOpacity(0.5), fontSize: 16),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          )
-                        : ListView.builder(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            itemCount: filteredContacts.length,
-                            itemBuilder: (context, index) {
-                              final contact = filteredContacts[index];
-                              final name = contact['name'] ?? 'Истифодабаранда';
-                              final role = contact['role'] ?? '';
-                              final studentName = contact['studentName'] ?? '';
-                              final unreadCount = contact['unreadCount'] ?? 0;
-                              final imageUrl = contact['imageUrl'] as String?;
-
-                              return InkWell(
-                                onTap: () async {
-                                  await Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => ChatDetailScreen(
-                                        contactId: contact['id'],
-                                        contactName: name,
-                                        studentName: studentName,
-                                        contactRole: role,
-                                      ),
-                                    ),
-                                  );
-                                  _fetchContacts(showLoading: false);
-                                },
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                                  child: Row(
+              child: Container(
+                color: isDarkMode ? const Color(0xFF0D120E) : const Color(0xFFF1F8F4),
+                child: RefreshIndicator(
+                  onRefresh: () => _fetchContacts(showLoading: true),
+                  color: primaryColor,
+                  child: _isLoading
+                      ? Center(child: CircularProgressIndicator(color: primaryColor))
+                      : filteredContacts.isEmpty
+                          ? ListView(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              children: [
+                                SizedBox(height: MediaQuery.of(context).size.height * 0.2),
+                                Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      // Avatar with dot
-                                      Stack(
-                                        children: [
-                                          CircleAvatar(
-                                            radius: 28,
-                                            backgroundColor: primaryColor.withOpacity(0.1),
+                                      Icon(
+                                        _searchQuery.isNotEmpty ? Icons.search_off : Icons.chat_bubble_outline,
+                                        size: 64,
+                                        color: textColor.withOpacity(0.2),
+                                      ),
+                                      const SizedBox(height: 16),
+                                      Text(
+                                        _searchQuery.isNotEmpty
+                                            ? 'Натиҷае ёфт нашуд'
+                                            : 'Ягон сӯҳбат ёфт нашуд',
+                                        style: TextStyle(color: textColor.withOpacity(0.5), fontSize: 16),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            )
+                          : ListView.builder(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              itemCount: filteredContacts.length,
+                              itemBuilder: (context, index) {
+                                final contact = filteredContacts[index];
+                                final name = contact['name'] ?? 'Истифодабаранда';
+                                final role = contact['role'] ?? '';
+                                final studentName = contact['studentName'] ?? '';
+                                final unreadCount = contact['unreadCount'] ?? 0;
+                                final imageUrl = contact['imageUrl'] as String?;
+
+                                return InkWell(
+                                  onTap: () async {
+                                    await Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => ChatDetailScreen(
+                                          contactId: contact['id'],
+                                          contactName: name,
+                                          studentName: studentName,
+                                          contactRole: role,
+                                          contactImageUrl: imageUrl,
+                                        ),
+                                      ),
+                                    );
+                                    _fetchContacts(showLoading: false);
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: isDarkMode ? const Color(0xFF161E18) : Colors.white,
+                                        borderRadius: BorderRadius.circular(16),
+                                        boxShadow: isDarkMode ? [] : [
+                                          BoxShadow(
+                                            color: Colors.black.withOpacity(0.06),
+                                            blurRadius: 10,
+                                            spreadRadius: 1,
+                                            offset: const Offset(0, 4),
+                                          ),
+                                        ],
+                                      ),
+                                      padding: const EdgeInsets.all(12),
+                                      child: Row(
+                                      children: [
+                                        // Avatar with green border
+                                        Container(
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            border: Border.all(color: const Color(0xFF32A753), width: 1.5),
+                                          ),
+                                          child: CircleAvatar(
+                                            radius: 26,
+                                            backgroundColor: Colors.transparent,
                                             backgroundImage: imageUrl != null && imageUrl.isNotEmpty
-                                                ? NetworkImage(ApiService.getFullImageUrl(imageUrl))
+                                                ? CachedNetworkImageProvider(ApiService.getFullImageUrl(imageUrl))
                                                 : null,
                                             child: imageUrl != null && imageUrl.isNotEmpty
                                                 ? null
                                                 : Text(
                                                     _getInitials(name),
                                                     style: TextStyle(
-                                                      color: primaryColor,
-                                                      fontWeight: FontWeight.bold,
-                                                      fontSize: 18,
+                                                      color: isDarkMode ? Colors.white : Colors.black,
+                                                      fontWeight: FontWeight.w500,
+                                                      fontSize: 20,
                                                     ),
                                                   ),
                                           ),
-                                          Positioned(
-                                            bottom: 0,
-                                            right: 0,
-                                            child: Container(
-                                              width: 14,
-                                              height: 14,
-                                              decoration: BoxDecoration(
-                                                color: primaryColor,
-                                                shape: BoxShape.circle,
-                                                border: BorderSide(
-                                                  color: bgColor,
-                                                  width: 2.5,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(width: 16),
-                                      // Name & Subtitle
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              name,
-                                              style: TextStyle(
-                                                color: textColor,
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: 16,
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              studentName.isNotEmpty
-                                                  ? (role == 'Teacher' ? 'Муаллими: $studentName' : 'Волидайни: $studentName')
-                                                  : (role == 'Teacher' ? 'Муаллим' : 'Волидайн'),
-                                              style: TextStyle(
-                                                color: textColor.withOpacity(0.5),
-                                                fontSize: 14,
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ],
                                         ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      // Trailing Info (Unread Count)
-                                      Column(
-                                        crossAxisAlignment: CrossAxisAlignment.end,
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          if (unreadCount > 0)
-                                            Container(
-                                              width: 24,
-                                              height: 24,
-                                              decoration: BoxDecoration(
-                                                color: primaryColor,
-                                                shape: BoxShape.circle,
+                                        const SizedBox(width: 16),
+                                        // Name & Subtitle
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                name,
+                                                style: TextStyle(
+                                                  color: isDarkMode ? Colors.white : const Color(0xFF1E293B),
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 16,
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
                                               ),
-                                              child: Center(
-                                                child: Text(
-                                                  '$unreadCount',
-                                                  style: const TextStyle(
-                                                    color: Colors.white,
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 12,
+                                              const SizedBox(height: 6),
+                                              Text(
+                                                studentName.isNotEmpty
+                                                    ? (role == 'Teacher' ? 'Муаллими: $studentName' : 'Волидайни: $studentName')
+                                                    : 'Ма имруз омадабдм',
+                                                style: TextStyle(
+                                                  color: isDarkMode ? Colors.white54 : const Color(0xFF94A3B8),
+                                                  fontSize: 13,
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        // Trailing Info (Unread Count & Chevron)
+                                        Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          crossAxisAlignment: CrossAxisAlignment.center,
+                                          children: [
+                                            if (unreadCount > 0)
+                                              Container(
+                                                padding: const EdgeInsets.all(6),
+                                                decoration: const BoxDecoration(
+                                                  color: Color(0xFFEF4444),
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                child: Center(
+                                                  child: Text(
+                                                    '$unreadCount',
+                                                    style: const TextStyle(
+                                                      color: Colors.white,
+                                                      fontWeight: FontWeight.bold,
+                                                      fontSize: 12,
+                                                    ),
                                                   ),
                                                 ),
                                               ),
+                                            const SizedBox(width: 8),
+                                            Icon(
+                                              Icons.chevron_right,
+                                              color: isDarkMode ? Colors.white38 : const Color(0xFFCBD5E1),
+                                              size: 20,
                                             ),
-                                        ],
-                                      ),
-                                    ],
+                                          ],
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               );
                             },
                           ),
+                ),
               ),
             ),
           ],
