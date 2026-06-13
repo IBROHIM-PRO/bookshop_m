@@ -7,6 +7,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../services/api_service.dart';
 import '../login_screen.dart';
+import 'reader_stats.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -239,6 +240,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _buildInfoCard(Icons.phone_outlined, 'Телефон', user.phone!, textColor),
                 _buildInfoCard(Icons.badge_outlined, 'Нақш', _roleLabel(user.role), textColor),
                 const SizedBox(height: 24),
+                _buildSectionTitle('Фаъолият', textColor),
+                const SizedBox(height: 12),
+                _buildActionCard(
+                  Icons.bar_chart_outlined,
+                  'Статистикаи ман',
+                  'Дидани омори хониш ва холҳои тестҳо',
+                  textColor,
+                  () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const ReaderStatsScreen()),
+                    );
+                  },
+                ),
+                const SizedBox(height: 24),
               ]),
             ),
           ),
@@ -364,6 +379,76 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildActionCard(IconData icon, String label, String value, Color textColor, VoidCallback onTap) {
+    final isDarkMode = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: isDarkMode ? Colors.white.withOpacity(0.03) : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isDarkMode ? textColor.withOpacity(0.1) : const Color(0xFF1E7431).withOpacity(0.15),
+          ),
+          boxShadow: isDarkMode ? [] : [
+            BoxShadow(
+              color: const Color(0xFF228B22).withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: isDarkMode ? Colors.white.withOpacity(0.1) : const Color(0xFFEBF3ED),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                icon,
+                color: isDarkMode ? textColor : const Color(0xFF1E7431),
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: isDarkMode ? textColor : const Color(0xFF1A1F1C),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    value,
+                    style: TextStyle(
+                      color: isDarkMode ? textColor.withOpacity(0.4) : const Color(0xFF657367),
+                      fontSize: 11,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right,
+              color: isDarkMode ? textColor.withOpacity(0.3) : const Color(0xFF1E7431).withOpacity(0.5),
+            ),
+          ],
+        ),
       ),
     );
   }

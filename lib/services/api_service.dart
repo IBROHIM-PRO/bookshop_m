@@ -10,7 +10,7 @@ class ApiService {
   static VoidCallback? onUnauthorized;
 
   static const List<String> candidateHosts = [
-    '192.168.0.107:5179',
+    '192.168.0.100:5179',
     'localhost:5179',
     '10.0.2.2:5179',
     '10.74.7.83:5179',
@@ -57,7 +57,9 @@ class ApiService {
     return headers;
   }
 
-  static Future<http.Response> _runWithFailover(Future<http.Response> Function(String urlPrefix) requestFn) async {
+  static Future<http.Response> _runWithFailover(
+    Future<http.Response> Function(String urlPrefix) requestFn,
+  ) async {
     int startIndex = _currentHostIndex;
     int attempts = 0;
     while (attempts < candidateHosts.length) {
@@ -72,7 +74,9 @@ class ApiService {
         return response;
       } catch (e) {
         attempts++;
-        debugPrint('Request error on ${candidateHosts[idx]}: $e. Attempts: $attempts/${candidateHosts.length}');
+        debugPrint(
+          'Request error on ${candidateHosts[idx]}: $e. Attempts: $attempts/${candidateHosts.length}',
+        );
         if (attempts >= candidateHosts.length) {
           rethrow;
         }
@@ -85,37 +89,55 @@ class ApiService {
     return _runWithFailover((urlPrefix) async {
       final url = Uri.parse('$urlPrefix$endpoint');
       final headers = await _getHeaders();
-      final response = await http.get(url, headers: headers).timeout(const Duration(seconds: 5));
+      final response = await http
+          .get(url, headers: headers)
+          .timeout(const Duration(seconds: 5));
       _checkResponse(response);
       return response;
     });
   }
 
-  static Future<http.Response> post(String endpoint, Map<String, dynamic> body) async {
+  static Future<http.Response> post(
+    String endpoint,
+    Map<String, dynamic> body,
+  ) async {
     return _runWithFailover((urlPrefix) async {
       final url = Uri.parse('$urlPrefix$endpoint');
       final headers = await _getHeaders();
-      final response = await http.post(url, headers: headers, body: jsonEncode(body)).timeout(const Duration(seconds: 5));
+      final response = await http
+          .post(url, headers: headers, body: jsonEncode(body))
+          .timeout(const Duration(seconds: 5));
       _checkResponse(response);
       return response;
     });
   }
 
-  static Future<http.Response> postWithTimeout(String endpoint, Map<String, dynamic> body, Duration timeout) async {
+  static Future<http.Response> postWithTimeout(
+    String endpoint,
+    Map<String, dynamic> body,
+    Duration timeout,
+  ) async {
     return _runWithFailover((urlPrefix) async {
       final url = Uri.parse('$urlPrefix$endpoint');
       final headers = await _getHeaders();
-      final response = await http.post(url, headers: headers, body: jsonEncode(body)).timeout(timeout);
+      final response = await http
+          .post(url, headers: headers, body: jsonEncode(body))
+          .timeout(timeout);
       _checkResponse(response);
       return response;
     });
   }
 
-  static Future<http.Response> put(String endpoint, Map<String, dynamic> body) async {
+  static Future<http.Response> put(
+    String endpoint,
+    Map<String, dynamic> body,
+  ) async {
     return _runWithFailover((urlPrefix) async {
       final url = Uri.parse('$urlPrefix$endpoint');
       final headers = await _getHeaders();
-      final response = await http.put(url, headers: headers, body: jsonEncode(body)).timeout(const Duration(seconds: 5));
+      final response = await http
+          .put(url, headers: headers, body: jsonEncode(body))
+          .timeout(const Duration(seconds: 5));
       _checkResponse(response);
       return response;
     });
@@ -125,13 +147,18 @@ class ApiService {
     return _runWithFailover((urlPrefix) async {
       final url = Uri.parse('$urlPrefix$endpoint');
       final headers = await _getHeaders();
-      final response = await http.delete(url, headers: headers).timeout(const Duration(seconds: 5));
+      final response = await http
+          .delete(url, headers: headers)
+          .timeout(const Duration(seconds: 5));
       _checkResponse(response);
       return response;
     });
   }
 
-  static Future<http.Response> uploadFile(String filePath, String fileName) async {
+  static Future<http.Response> uploadFile(
+    String filePath,
+    String fileName,
+  ) async {
     return _runWithFailover((urlPrefix) async {
       final url = Uri.parse('$urlPrefix/api/StaticFile');
       final request = http.MultipartRequest('POST', url);
@@ -140,21 +167,29 @@ class ApiService {
       if (token != null) {
         request.headers['Authorization'] = 'Bearer $token';
       }
-      request.files.add(await http.MultipartFile.fromPath(
-        'File',
-        filePath,
-        filename: fileName,
-      ));
-      final streamedResponse = await request.send().timeout(const Duration(seconds: 30));
-      final response = await http.Response.fromStream(streamedResponse).timeout(const Duration(seconds: 30));
+      request.files.add(
+        await http.MultipartFile.fromPath('File', filePath, filename: fileName),
+      );
+      final streamedResponse = await request.send().timeout(
+        const Duration(seconds: 30),
+      );
+      final response = await http.Response.fromStream(
+        streamedResponse,
+      ).timeout(const Duration(seconds: 30));
       _checkResponse(response);
       return response;
     });
   }
 
-  static Future<http.Response> uploadAvatar(String filePath, String fileName, {int? userId}) async {
+  static Future<http.Response> uploadAvatar(
+    String filePath,
+    String fileName, {
+    int? userId,
+  }) async {
     return _runWithFailover((urlPrefix) async {
-      final endpoint = userId != null ? '/api/auth/users/$userId/avatar' : '/api/auth/profile/avatar';
+      final endpoint = userId != null
+          ? '/api/auth/users/$userId/avatar'
+          : '/api/auth/profile/avatar';
       final url = Uri.parse('$urlPrefix$endpoint');
       final request = http.MultipartRequest('POST', url);
       final prefs = await SharedPreferences.getInstance();
@@ -162,13 +197,15 @@ class ApiService {
       if (token != null) {
         request.headers['Authorization'] = 'Bearer $token';
       }
-      request.files.add(await http.MultipartFile.fromPath(
-        'file',
-        filePath,
-        filename: fileName,
-      ));
-      final streamedResponse = await request.send().timeout(const Duration(seconds: 30));
-      final response = await http.Response.fromStream(streamedResponse).timeout(const Duration(seconds: 30));
+      request.files.add(
+        await http.MultipartFile.fromPath('file', filePath, filename: fileName),
+      );
+      final streamedResponse = await request.send().timeout(
+        const Duration(seconds: 30),
+      );
+      final response = await http.Response.fromStream(
+        streamedResponse,
+      ).timeout(const Duration(seconds: 30));
       _checkResponse(response);
       return response;
     });
@@ -195,15 +232,21 @@ class ApiService {
       });
 
       if (fileField != null && filePath != null) {
-        request.files.add(await http.MultipartFile.fromPath(
-          fileField,
-          filePath,
-          filename: fileName,
-        ));
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            fileField,
+            filePath,
+            filename: fileName,
+          ),
+        );
       }
 
-      final streamedResponse = await request.send().timeout(const Duration(seconds: 30));
-      final response = await http.Response.fromStream(streamedResponse).timeout(const Duration(seconds: 30));
+      final streamedResponse = await request.send().timeout(
+        const Duration(seconds: 30),
+      );
+      final response = await http.Response.fromStream(
+        streamedResponse,
+      ).timeout(const Duration(seconds: 30));
       _checkResponse(response);
       return response;
     });
@@ -215,12 +258,15 @@ class ApiService {
       try {
         final currentUri = Uri.parse(baseUrl);
         final urlUri = Uri.parse(url);
-        if (urlUri.host != currentUri.host || urlUri.port != currentUri.port) {
-          return urlUri.replace(
-            scheme: currentUri.scheme,
-            host: currentUri.host,
-            port: currentUri.port,
-          ).toString();
+        final host = urlUri.host.toLowerCase();
+        if (host == 'localhost' || host == '127.0.0.1' || host == '10.0.2.2') {
+          return urlUri
+              .replace(
+                scheme: currentUri.scheme,
+                host: currentUri.host,
+                port: currentUri.port,
+              )
+              .toString();
         }
       } catch (_) {}
       return url;

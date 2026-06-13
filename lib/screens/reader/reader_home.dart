@@ -14,6 +14,7 @@ import 'reader_tests.dart';
 import 'profile_screen.dart';
 import 'cart_screen.dart';
 import 'reader_stats.dart';
+import 'specialties_screen.dart';
 import 'my_books_screen.dart';
 import 'leaderboard_screen.dart';
 import '../../widgets/book_3d.dart';
@@ -52,6 +53,13 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
     super.initState();
     _fetchData();
     _connectWebSocket();
+    SpecialtiesScreen.activeTabNotifier.addListener(_onSpecialtiesTabChanged);
+  }
+
+  void _onSpecialtiesTabChanged() {
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   void _connectWebSocket() {
@@ -73,6 +81,7 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
 
   @override
   void dispose() {
+    SpecialtiesScreen.activeTabNotifier.removeListener(_onSpecialtiesTabChanged);
     _wsSubscription?.cancel();
     super.dispose();
   }
@@ -505,7 +514,7 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
     final List<Widget> tabs = [
       _buildLibraryTab(),
       const ReaderTestsScreen(),
-      const ReaderStatsScreen(),
+      const SpecialtiesScreen(),
       const LeaderboardScreen(),
       const ProfileScreen(),
     ];
@@ -674,101 +683,148 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
               : AppBar(
                   backgroundColor: isDarkMode ? Colors.black : Colors.white,
                   elevation: 0,
-                  title: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Салом, $userName!',
-                        style: TextStyle(color: textColor, fontSize: 20, fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                  actions: [
-                    Stack(
-                      clipBehavior: Clip.none,
-                      alignment: Alignment.center,
-                      children: [
-                        IconButton(
-                          icon: SvgPicture.asset(
-                            'assets/logo/logoheader/Frame 1984078266.svg',
-                            height: 28,
-                            colorFilter: ColorFilter.mode(
-                              isDarkMode ? Colors.white : Colors.black,
-                              BlendMode.srcIn,
-                            ),
-                          ),
+                  leading: _currentIndex == 2 && SpecialtiesScreen.activeTabNotifier.value == 2
+                      ? IconButton(
+                          icon: Icon(Icons.arrow_back, color: textColor),
                           onPressed: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(builder: (_) => const NotificationsFeedScreen())
-                            ).then((_) => _fetchNotificationCount());
+                            SpecialtiesScreen.activeTabNotifier.value = 0;
                           },
+                        )
+                      : null,
+                  title: _currentIndex == 2
+                      ? Text(
+                          SpecialtiesScreen.activeTabNotifier.value == 2 ? 'Заметкаҳо' : 'Ихтисосҳо (ММТ)',
+                          style: TextStyle(color: textColor, fontSize: 20, fontWeight: FontWeight.bold),
+                        )
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Салом, $userName!',
+                              style: TextStyle(color: textColor, fontSize: 20, fontWeight: FontWeight.bold),
+                            ),
+                          ],
                         ),
-                        if (_unreadNotificationCount > 0)
-                          Positioned(
-                            top: 6,
-                            right: 6,
-                            child: Container(
-                              width: 18,
-                              height: 18,
-                              decoration: const BoxDecoration(
-                                color: Colors.red,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Center(
-                                child: Text(
-                                  '$_unreadNotificationCount',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
+                  actions: [
+                    if (_currentIndex == 2 && SpecialtiesScreen.activeTabNotifier.value == 2)
+                      ValueListenableBuilder<List<dynamic>>(
+                        valueListenable: SpecialtiesScreen.selectedSavedSpecialtiesNotifier,
+                        builder: (context, selectedList, _) {
+                          if (selectedList.isNotEmpty) {
+                            return IconButton(
+                              icon: const Icon(Icons.picture_as_pdf, color: Color(0xFF22873B)),
+                              tooltip: 'Чопи PDF',
+                              onPressed: () {
+                                SpecialtiesScreen.printSelectedSpecialties(context);
+                              },
+                            );
+                          }
+                          return const SizedBox.shrink();
+                        },
+                      )
+                    else
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Stack(
+                            clipBehavior: Clip.none,
+                            alignment: Alignment.center,
+                            children: [
+                              IconButton(
+                                icon: SvgPicture.asset(
+                                  'assets/logo/logoheader/Frame 1984078266.svg',
+                                  height: 28,
+                                  colorFilter: ColorFilter.mode(
+                                    isDarkMode ? Colors.white : Colors.black,
+                                    BlendMode.srcIn,
                                   ),
                                 ),
+                                onPressed: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(builder: (_) => const NotificationsFeedScreen())
+                                  ).then((_) => _fetchNotificationCount());
+                                },
                               ),
-                            ),
-                          ),
-                      ],
-                    ),
-                    Stack(
-                      clipBehavior: Clip.none,
-                      alignment: Alignment.center,
-                      children: [
-                        IconButton(
-                          icon: SvgPicture.asset(
-                            'assets/logo/logoheader/Group 44376.svg',
-                            height: 24,
-                            colorFilter: ColorFilter.mode(
-                              isDarkMode ? Colors.white : Colors.black,
-                              BlendMode.srcIn,
-                            ),
-                          ),
-                          onPressed: _openCart,
-                          tooltip: 'Сабади харид',
-                        ),
-                        if (_cartCount > 0)
-                          Positioned(
-                            top: 6,
-                            right: 6,
-                            child: Container(
-                              width: 18,
-                              height: 18,
-                              decoration: const BoxDecoration(
-                                color: Colors.red,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Center(
-                                child: Text(
-                                  '$_cartCount',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
+                              if (_unreadNotificationCount > 0)
+                                Positioned(
+                                  top: 6,
+                                  right: 6,
+                                  child: Container(
+                                    width: 18,
+                                    height: 18,
+                                    decoration: const BoxDecoration(
+                                      color: Colors.red,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        '$_unreadNotificationCount',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ),
+                            ],
                           ),
-                      ],
-                    ),
+                          Stack(
+                            clipBehavior: Clip.none,
+                            alignment: Alignment.center,
+                            children: [
+                              IconButton(
+                                icon: SvgPicture.asset(
+                                  'assets/logo/logoheader/Group 44376.svg',
+                                  height: 24,
+                                  colorFilter: ColorFilter.mode(
+                                    isDarkMode ? Colors.white : Colors.black,
+                                    BlendMode.srcIn,
+                                  ),
+                                ),
+                                onPressed: _openCart,
+                                tooltip: 'Сабади харид',
+                              ),
+                              if (_cartCount > 0)
+                                Positioned(
+                                  top: 6,
+                                  right: 6,
+                                  child: Container(
+                                    width: 18,
+                                    height: 18,
+                                    decoration: const BoxDecoration(
+                                      color: Colors.red,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        '$_cartCount',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          if (_currentIndex == 2)
+                            IconButton(
+                              icon: Icon(
+                                SpecialtiesScreen.activeTabNotifier.value == 2 ? Icons.bookmark : Icons.bookmark_border,
+                                color: SpecialtiesScreen.activeTabNotifier.value == 2 ? const Color(0xFF22873B) : (isDarkMode ? Colors.white : Colors.black),
+                              ),
+                              onPressed: () {
+                                SpecialtiesScreen.activeTabNotifier.value =
+                                    SpecialtiesScreen.activeTabNotifier.value == 2 ? 0 : 2;
+                              },
+                              tooltip: 'Заметкаҳо',
+                            ),
+                        ],
+                      ),
                     const SizedBox(width: 8),
                   ],
                 )),
@@ -790,7 +846,7 @@ class _ReaderHomeScreenState extends State<ReaderHomeScreen> {
             children: [
               _buildBottomNavItem(0, 'assets/logo/logosneckbar/Group 4.svg', 'Маркет', theme),
               _buildBottomNavItem(1, 'assets/logo/logosneckbar/Group 3.svg', 'Егзамен', theme),
-              _buildBottomNavItem(2, 'assets/logo/logosneckbar/Group 2.svg', 'Статистик', theme),
+              _buildBottomNavItem(2, 'assets/logo/logosneckbar/Group 2.svg', 'Ихтисосҳо', theme),
               _buildBottomNavItem(3, 'assets/logo/logosneckbar/Group 5.svg', 'Топ', theme),
               _buildBottomNavItem(4, 'assets/logo/logosneckbar/Group 6.svg', 'Профил', theme),
             ],

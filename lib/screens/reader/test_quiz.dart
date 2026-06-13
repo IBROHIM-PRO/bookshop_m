@@ -24,6 +24,7 @@ class _TestQuizScreenState extends State<TestQuizScreen> {
   bool _isLoading = true;
   Map<String, dynamic>? _submissionResult;
   int _currentQuestionIndex = 0;
+  bool _isDragging = false;
 
   // Timers and states
   Timer? _timer;
@@ -222,69 +223,44 @@ class _TestQuizScreenState extends State<TestQuizScreen> {
 
   Widget _buildSuccessScreen(ThemeData theme, Color textColor, Color backgroundColor, bool isDarkMode) {
     final result = _submissionResult!;
-    final int score = result['score'] ?? 0;
     final int earnedPoints = result['earnedPoints'] ?? 0;
     final int totalPoints = result['totalPoints'] ?? 0;
-    final int optionEarnedPoints = result['optionEarnedPoints'] ?? earnedPoints;
-    final int optionTotalPoints = result['optionTotalPoints'] ?? totalPoints;
     final bool isGraded = result['isGraded'] ?? true;
-    final double percentage = totalPoints > 0 ? (earnedPoints * 100) / totalPoints : 0;
-    final isPassed = percentage >= 50.0;
+    
+    final int correctCount = result['correctCount'] ?? earnedPoints;
+    final int incorrectCount = result['incorrectCount'] ?? (totalPoints - earnedPoints);
 
-    String titleText = isGraded 
-        ? (isPassed ? 'Санҷиш супорида шуд' : 'Санҷиш ноком шуд')
-        : 'Ҷавобҳо қабул шуданд';
-        
-    String description = '';
-    if (isGraded) {
-      description = 'Холҳои гирифташуда: $earnedPoints аз $totalPoints (${percentage.toStringAsFixed(1)}%)\n\n' +
-          (isPassed 
-              ? 'Офарин! Шумо санҷишро бомуваффақият супоридед.'
-              : 'Мутаассифона, холҳои шумо барои гузаштан кам аст. Боз кӯшиш кунед.');
-    } else {
-      description = 'Холҳои саволҳои вариантӣ: $optionEarnedPoints аз $optionTotalPoints\n\n'
-          'Ҷавобҳои шумо бомуваффақият қабул шуданд. Муаллим холҳои саволҳои пӯшида (хаттӣ)-ро дертар месанҷад.';
-    }
-
-    final accentColor = theme.colorScheme.primary;
+    String titleText = isGraded ? 'НАТИҶА' : 'Равон карда шуд';
+    String subtitleText = isGraded 
+        ? 'Натиҷаи супоридани тестҳои шумо' 
+        : 'Тести шумо барои санҷиши муаллим равон карда шуд';
 
     return Scaffold(
       backgroundColor: backgroundColor,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        centerTitle: true,
-        title: const Text(
-          'Оформлено',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        automaticallyImplyLeading: false,
-      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
           child: Column(
             children: [
               const Spacer(),
-              // Light lavender circle with purple checkmark (matching image 3)
+              // Pastel green circle with checkmark
               Container(
                 width: 120,
                 height: 120,
-                decoration: BoxDecoration(
-                  color: isDarkMode ? accentColor.withOpacity(0.15) : const Color(0xFFEEECFC),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFA2F4B3),
                   shape: BoxShape.circle,
                 ),
-                child: Center(
+                child: const Center(
                   child: Icon(
-                    isGraded && !isPassed ? Icons.close_rounded : Icons.check_rounded,
-                    color: isGraded && !isPassed ? Colors.redAccent : accentColor,
+                    Icons.check_rounded,
+                    color: Color(0xFF1E7431),
                     size: 64,
                   ),
                 ),
               ),
               const SizedBox(height: 36),
-              // Success bold title
+              // Title
               Text(
                 titleText,
                 textAlign: TextAlign.center,
@@ -295,31 +271,127 @@ class _TestQuizScreenState extends State<TestQuizScreen> {
                   letterSpacing: -0.5,
                 ),
               ),
-              const SizedBox(height: 16),
-              // Description body text
+              const SizedBox(height: 8),
+              // Subtitle
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12.0),
                 child: Text(
-                  description,
+                  subtitleText,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: textColor.withOpacity(0.6),
                     fontSize: 15,
-                    height: 1.6,
+                    height: 1.5,
                   ),
                 ),
               ),
+              const SizedBox(height: 32),
+              
+              // Only display correct/incorrect counters if graded
+              if (isGraded) ...[
+                Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: isDarkMode ? Colors.white.withOpacity(0.04) : const Color(0xFFF8F9FA),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFEBF3ED),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.check_rounded, color: Color(0xFF2E9F4A), size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      const Text(
+                        'Дуруст',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        '$correctCount',
+                        style: const TextStyle(
+                          color: Color(0xFF2E9F4A),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: isDarkMode ? Colors.white.withOpacity(0.04) : const Color(0xFFF8F9FA),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFFCE8E6),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.close_rounded, color: Color(0xFFD32F2F), size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      const Text(
+                        'Нодуруст',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        '$incorrectCount',
+                        style: const TextStyle(
+                          color: Color(0xFFD32F2F),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
               const Spacer(flex: 2),
-              // Return home button
-              SizedBox(
+              
+              // Centered green button
+              Container(
                 width: double.infinity,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF2E9F4A), Color(0xFF1E7431)],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                  borderRadius: BorderRadius.circular(30),
+                ),
                 child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                  ),
                   onPressed: () {
                     Navigator.of(context).pop();
                   },
                   child: const Text(
-                    'Ба саҳифаи асосӣ',
+                    'Саҳифаи тестҳо',
                     style: TextStyle(
+                      color: Colors.white,
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
@@ -509,6 +581,11 @@ class _TestQuizScreenState extends State<TestQuizScreen> {
           });
         },
         textColor: textColor,
+        onDragStateChanged: (isDragging) {
+          setState(() {
+            _isDragging = isDragging;
+          });
+        },
       );
     } else if (question.questionType == 'Multiple') {
       final selected = _multipleAnswers[question.id] ?? {};
@@ -711,9 +788,9 @@ class _TestQuizScreenState extends State<TestQuizScreen> {
             ),
             const SizedBox(height: 20),
 
-            // Question Card
             Expanded(
               child: SingleChildScrollView(
+                physics: _isDragging ? const NeverScrollableScrollPhysics() : null,
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                 child: Container(
                   width: double.infinity,
@@ -975,6 +1052,7 @@ class NmtMatchingWidget extends StatefulWidget {
   final String currentValue;
   final ValueChanged<String> onChanged;
   final Color textColor;
+  final ValueChanged<bool>? onDragStateChanged;
 
   const NmtMatchingWidget({
     super.key,
@@ -982,6 +1060,7 @@ class NmtMatchingWidget extends StatefulWidget {
     required this.currentValue,
     required this.onChanged,
     required this.textColor,
+    this.onDragStateChanged,
   });
 
   @override
@@ -1312,8 +1391,15 @@ class _NmtMatchingWidgetState extends State<NmtMatchingWidget> {
                             ),
                           ),
                         )
-                      : Draggable<int>(
-                          data: num,
+                      : Listener(
+                          onPointerDown: (_) => widget.onDragStateChanged?.call(true),
+                          onPointerUp: (_) => widget.onDragStateChanged?.call(false),
+                          onPointerCancel: (_) => widget.onDragStateChanged?.call(false),
+                          child: Draggable<int>(
+                            onDragStarted: () => widget.onDragStateChanged?.call(true),
+                            onDragEnd: (_) => widget.onDragStateChanged?.call(false),
+                            onDraggableCanceled: (_, __) => widget.onDragStateChanged?.call(false),
+                            data: num,
                           feedback: Material(
                             color: Colors.transparent,
                             child: Container(
@@ -1378,6 +1464,7 @@ class _NmtMatchingWidgetState extends State<NmtMatchingWidget> {
                             ),
                           ),
                         ),
+                      ),
                   const SizedBox(width: 10),
                   // Description text
                   Expanded(
