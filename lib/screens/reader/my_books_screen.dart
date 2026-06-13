@@ -292,26 +292,36 @@ class _MyBooksScreenState extends State<MyBooksScreen> {
     }
 
     if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+      return RefreshIndicator(
+        onRefresh: _fetchMyBooks,
+        color: const Color(0xFF1E7431),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
           children: [
-            Icon(Icons.error_outline, size: 60, color: textColor),
-            const SizedBox(height: 16),
-            Text(
-              _error!,
-              textAlign: TextAlign.center,
-              style: TextStyle(color: textColor),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: _fetchMyBooks,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1E7431),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            Container(
+              padding: const EdgeInsets.only(top: 150, left: 16, right: 16),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline, size: 60, color: textColor),
+                  const SizedBox(height: 16),
+                  Text(
+                    _error!,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: textColor),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: _fetchMyBooks,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1E7431),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Text('Боз кӯшиш кунед'),
+                  ),
+                ],
               ),
-              child: const Text('Боз кӯшиш кунед'),
             ),
           ],
         ),
@@ -413,17 +423,25 @@ class _MyBooksScreenState extends State<MyBooksScreen> {
         const SizedBox(height: 16),
 
         Expanded(
-          child: _filteredBooks.isEmpty
-              ? Center(
-                  child: Text(
-                    'Китобҳо ёфт нашуданд',
-                    style: TextStyle(color: textColor.withOpacity(0.6), fontSize: 16),
-                  ),
-                )
-              : RefreshIndicator(
-                  onRefresh: _fetchMyBooks,
-                  color: const Color(0xFF1E7431),
-                  child: GridView.builder(
+          child: RefreshIndicator(
+            onRefresh: _fetchMyBooks,
+            color: const Color(0xFF1E7431),
+            child: _filteredBooks.isEmpty
+                ? ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: [
+                      Container(
+                        alignment: Alignment.center,
+                        padding: const EdgeInsets.only(top: 100),
+                        child: Text(
+                          'Китобҳо ёфт нашуданд',
+                          style: TextStyle(color: textColor.withOpacity(0.6), fontSize: 16),
+                        ),
+                      ),
+                    ],
+                  )
+                : GridView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.all(16),
                     gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 2,
@@ -434,7 +452,7 @@ class _MyBooksScreenState extends State<MyBooksScreen> {
                     itemCount: _filteredBooks.length,
                     itemBuilder: (context, index) => _buildBookCard(_filteredBooks[index]),
                   ),
-                ),
+          ),
         ),
       ],
     );

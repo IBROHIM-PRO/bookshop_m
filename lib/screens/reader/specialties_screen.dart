@@ -33,10 +33,13 @@ class ChatMessage {
 }
 
 class SpecialtiesScreen extends StatefulWidget {
-  static final ValueNotifier<int> activeTabNotifier = ValueNotifier<int>(0);
-  static final ValueNotifier<List<dynamic>> selectedSavedSpecialtiesNotifier = ValueNotifier<List<dynamic>>([]);
+  final bool isSavedOnly;
 
-  const SpecialtiesScreen({super.key});
+  static final ValueNotifier<int> activeTabNotifier = ValueNotifier<int>(0);
+  static final ValueNotifier<List<dynamic>> selectedSavedSpecialtiesNotifier =
+      ValueNotifier<List<dynamic>>([]);
+
+  const SpecialtiesScreen({super.key, this.isSavedOnly = false});
 
   static String _formatDateTime(DateTime dt) {
     final day = dt.day.toString().padLeft(2, '0');
@@ -51,15 +54,16 @@ class SpecialtiesScreen extends StatefulWidget {
     return pw.Padding(
       padding: const pw.EdgeInsets.all(6),
       child: pw.Center(
-        child: pw.Text(
-          text,
-          style: pw.TextStyle(font: font, fontSize: 10),
-        ),
+        child: pw.Text(text, style: pw.TextStyle(font: font, fontSize: 10)),
       ),
     );
   }
 
-  static pw.Widget _buildPdfDataCell(String text, pw.Font font, {pw.TextAlign align = pw.TextAlign.left}) {
+  static pw.Widget _buildPdfDataCell(
+    String text,
+    pw.Font font, {
+    pw.TextAlign align = pw.TextAlign.left,
+  }) {
     return pw.Padding(
       padding: const pw.EdgeInsets.all(6),
       child: pw.Text(
@@ -70,13 +74,18 @@ class SpecialtiesScreen extends StatefulWidget {
     );
   }
 
-  static Future<void> _generateAndPrintPdfStatic(BuildContext context, List<dynamic> items) async {
+  static Future<void> _generateAndPrintPdfStatic(
+    BuildContext context,
+    List<dynamic> items,
+  ) async {
     final pdf = pw.Document();
     final fontRegular = await PdfGoogleFonts.robotoRegular();
     final fontBold = await PdfGoogleFonts.robotoBold();
     final nowStr = _formatDateTime(DateTime.now());
     final countStr = '${items.length} аз 12';
-    final clusterId = items.isNotEmpty ? (items.first['clusterId']?.toString() ?? '5') : '5';
+    final clusterId = items.isNotEmpty
+        ? (items.first['clusterId']?.toString() ?? '5')
+        : '5';
 
     pdf.addPage(
       pw.Page(
@@ -96,9 +105,18 @@ class SpecialtiesScreen extends StatefulWidget {
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
-                  pw.Text('Гурӯҳ: $clusterId', style: pw.TextStyle(font: fontBold, fontSize: 11)),
-                  pw.Text('Сана: $nowStr', style: pw.TextStyle(font: fontRegular, fontSize: 11)),
-                  pw.Text('Шумора: $countStr', style: pw.TextStyle(font: fontBold, fontSize: 11)),
+                  pw.Text(
+                    'Гурӯҳ: $clusterId',
+                    style: pw.TextStyle(font: fontBold, fontSize: 11),
+                  ),
+                  pw.Text(
+                    'Сана: $nowStr',
+                    style: pw.TextStyle(font: fontRegular, fontSize: 11),
+                  ),
+                  pw.Text(
+                    'Шумора: $countStr',
+                    style: pw.TextStyle(font: fontBold, fontSize: 11),
+                  ),
                 ],
               ),
               pw.SizedBox(height: 8),
@@ -116,7 +134,9 @@ class SpecialtiesScreen extends StatefulWidget {
                 },
                 children: [
                   pw.TableRow(
-                    decoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                    decoration: const pw.BoxDecoration(
+                      color: PdfColors.grey200,
+                    ),
                     children: [
                       _buildPdfHeaderCell('№', fontBold),
                       _buildPdfHeaderCell('ID', fontBold),
@@ -150,11 +170,17 @@ class SpecialtiesScreen extends StatefulWidget {
                               children: [
                                 pw.TextSpan(
                                   text: '$specCode - ',
-                                  style: pw.TextStyle(font: fontBold, fontSize: 9),
+                                  style: pw.TextStyle(
+                                    font: fontBold,
+                                    fontSize: 9,
+                                  ),
                                 ),
                                 pw.TextSpan(
                                   text: specName,
-                                  style: pw.TextStyle(font: fontRegular, fontSize: 9),
+                                  style: pw.TextStyle(
+                                    font: fontRegular,
+                                    fontSize: 9,
+                                  ),
                                 ),
                               ],
                             ),
@@ -164,7 +190,11 @@ class SpecialtiesScreen extends StatefulWidget {
                         _buildPdfDataCell(studyForm, fontRegular),
                         _buildPdfDataCell(studyType, fontRegular),
                         _buildPdfDataCell('11', fontRegular),
-                        _buildPdfDataCell(planSeats, fontBold, align: pw.TextAlign.center),
+                        _buildPdfDataCell(
+                          planSeats,
+                          fontBold,
+                          align: pw.TextAlign.center,
+                        ),
                       ],
                     );
                   }).toList(),
@@ -174,8 +204,18 @@ class SpecialtiesScreen extends StatefulWidget {
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
-                  pw.Text('Довталаб: _______________________________________', style: pw.TextStyle(font: fontRegular, fontSize: 11)),
-                  pw.Text('Санаи чоп: $nowStr', style: pw.TextStyle(font: fontRegular, fontSize: 9, color: PdfColors.grey700)),
+                  pw.Text(
+                    'Довталаб: _______________________________________',
+                    style: pw.TextStyle(font: fontRegular, fontSize: 11),
+                  ),
+                  pw.Text(
+                    'Санаи чоп: $nowStr',
+                    style: pw.TextStyle(
+                      font: fontRegular,
+                      fontSize: 9,
+                      color: PdfColors.grey700,
+                    ),
+                  ),
                 ],
               ),
             ],
@@ -185,12 +225,13 @@ class SpecialtiesScreen extends StatefulWidget {
     );
 
     final bytes = await pdf.save();
-    final fileName = 'ruixati_ihtisosho_${DateTime.now().millisecondsSinceEpoch}.pdf';
+    final fileName =
+        'ruixati_ihtisosho_${DateTime.now().millisecondsSinceEpoch}.pdf';
 
     String savedPath = '';
     bool savedSuccessfully = false;
 
-    // Try saving directly to standard Download folder (Android)
+    // Try saving directly to standard Download folder (Android / Linux / macOS / Windows)
     try {
       if (Platform.isAndroid) {
         final downloadDir = Directory('/storage/emulated/0/Download');
@@ -199,6 +240,28 @@ class SpecialtiesScreen extends StatefulWidget {
           await file.writeAsBytes(bytes);
           savedPath = file.path;
           savedSuccessfully = true;
+        }
+      } else if (Platform.isLinux || Platform.isMacOS) {
+        final home = Platform.environment['HOME'];
+        if (home != null) {
+          final downloadDir = Directory('$home/Downloads');
+          if (await downloadDir.exists()) {
+            final file = File('${downloadDir.path}/$fileName');
+            await file.writeAsBytes(bytes);
+            savedPath = file.path;
+            savedSuccessfully = true;
+          }
+        }
+      } else if (Platform.isWindows) {
+        final userProfile = Platform.environment['USERPROFILE'];
+        if (userProfile != null) {
+          final downloadDir = Directory('$userProfile\\Downloads');
+          if (await downloadDir.exists()) {
+            final file = File('${downloadDir.path}\\$fileName');
+            await file.writeAsBytes(bytes);
+            savedPath = file.path;
+            savedSuccessfully = true;
+          }
         }
       }
     } catch (_) {}
@@ -226,12 +289,15 @@ class SpecialtiesScreen extends StatefulWidget {
         savedSuccessfully = true;
       } catch (_) {}
     }
-
     if (savedSuccessfully && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Файл бомуваффақият боргирӣ шуд:\n$savedPath'),
-          duration: const Duration(seconds: 5),
+          content: Text(
+            'Файл бомуваффақият захира шуд.\n'
+            'Шумо метавонед файлро аз ҳамин суроға дар папкаи телефонатон дастрас кунед:\n'
+            '$savedPath',
+          ),
+          duration: const Duration(seconds: 8),
           action: SnackBarAction(
             label: 'OK',
             textColor: Colors.white,
@@ -260,9 +326,9 @@ class SpecialtiesScreen extends StatefulWidget {
       await _generateAndPrintPdfStatic(context, list);
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Хатогии боргирӣ: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Хатогии боргирӣ: $e')));
       }
     } finally {
       if (context.mounted) {
@@ -283,9 +349,11 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
   bool _isLoadingUniversities = true;
   String? _selectedUniversityCode;
   String _searchQuery = '';
-  String? _selectedStudyType; // null = all, 'ройгон' = free/budget, 'пулакӣ' = contract
+  String?
+  _selectedStudyType; // null = all, 'ройгон' = free/budget, 'пулакӣ' = contract
   String? _selectedStudyForm; // null = all, 'рӯзона', 'ғоибона', 'фосилавӣ'
-  String? _selectedStudyLanguage; // null = all, 'тоҷикӣ', 'русӣ', 'тоҷикӣ, русӣ'
+  String?
+  _selectedStudyLanguage; // null = all, 'тоҷикӣ', 'русӣ', 'тоҷикӣ, русӣ'
   double? _minScore;
   double? _maxScore;
   int? _minTuitionFee;
@@ -313,9 +381,9 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _aiPromptController = TextEditingController();
   final ScrollController _chatScrollController = ScrollController();
-  
+
   Timer? _debounce;
-  
+
   final List<ChatMessage> _chatMessages = [];
   bool _isLoadingAi = false;
 
@@ -325,6 +393,7 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
   String? _selectedInstitutionType;
 
   List<dynamic> _savedSpecialties = [];
+  Set<String> _savedKeys = {};
   bool _isLoadingSaved = true;
 
   bool _isSyncing = false;
@@ -335,7 +404,10 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
     });
 
     try {
-      final response = await ApiService.post('/api/Ntc/sync?clusterId=$_selectedClusterId', {});
+      final response = await ApiService.post(
+        '/api/Ntc/sync?clusterId=$_selectedClusterId',
+        {},
+      );
       if (response.statusCode == 200) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -380,7 +452,10 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
         ? const SizedBox(
             width: 24,
             height: 24,
-            child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF22873B)),
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: Color(0xFF22873B),
+            ),
           )
         : IconButton(
             icon: const Icon(Icons.sync, color: Color(0xFF22873B)),
@@ -399,7 +474,9 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
 
   @override
   void dispose() {
-    SpecialtiesScreen.activeTabNotifier.removeListener(_onActiveTabChanged);
+    if (!widget.isSavedOnly) {
+      SpecialtiesScreen.activeTabNotifier.removeListener(_onActiveTabChanged);
+    }
     _debounce?.cancel();
     _minScoreController.dispose();
     _maxScoreController.dispose();
@@ -415,21 +492,32 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
   @override
   void initState() {
     super.initState();
-    SpecialtiesScreen.activeTabNotifier.addListener(_onActiveTabChanged);
+    if (widget.isSavedOnly) {
+      SpecialtiesScreen.selectedSavedSpecialtiesNotifier.value = [];
+      _activeTab = 2;
+    } else {
+      SpecialtiesScreen.activeTabNotifier.addListener(_onActiveTabChanged);
+      _activeTab = SpecialtiesScreen.activeTabNotifier.value;
+    }
     _fetchUniversities();
     _fetchSpecialties(reset: true);
     _fetchSavedSpecialties();
-    
+
     // Add default friendly welcome message from Teacher Advisor
-    _chatMessages.add(ChatMessage(
-      text: 'Салом довталаби азиз! Ман Муаллими роҳнамои интеллектуалӣ ҳастам. Ба ман бигӯед, ки ба кадом ихтисосҳо дӯстдорӣ доред, дар кадом шаҳр таҳсил кардан мехоҳед ва ё бали худро нависед. Ман омори тестҳои шуморо таҳлил карда, ихтисоси мувофиқ ва роҳҳои беҳтар кардани натиҷаҳоро ба мисли муаллими воқеӣ мефаҳмонам.',
-      isUser: false,
-    ));
+    _chatMessages.add(
+      ChatMessage(
+        text:
+            'Салом довталаби азиз! Ман Муаллими роҳнамои интеллектуалӣ ҳастам. Ба ман бигӯед, ки ба кадом ихтисосҳо дӯстдорӣ доред, дар кадом шаҳр таҳсил кардан мехоҳед ва ё бали худро нависед. Ман омори тестҳои шуморо таҳлил карда, ихтисоси мувофиқ ва роҳҳои беҳтар кардани натиҷаҳоро ба мисли муаллими воқеӣ мефаҳмонам.',
+        isUser: false,
+      ),
+    );
   }
 
   Future<void> _fetchUniversities() async {
     try {
-      final response = await ApiService.get('/api/Ntc/universities?clusterId=$_selectedClusterId');
+      final response = await ApiService.get(
+        '/api/Ntc/universities?clusterId=$_selectedClusterId',
+      );
       if (response.statusCode == 200) {
         setState(() {
           _universities = jsonDecode(response.body) as List<dynamic>;
@@ -461,8 +549,10 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
     }
 
     try {
-      String endpoint = '/api/Ntc/specialties?clusterId=$_selectedClusterId&page=$_currentPage&pageSize=25';
-      if (_selectedUniversityCode != null && _selectedUniversityCode!.isNotEmpty) {
+      String endpoint =
+          '/api/Ntc/specialties?clusterId=$_selectedClusterId&page=$_currentPage&pageSize=25';
+      if (_selectedUniversityCode != null &&
+          _selectedUniversityCode!.isNotEmpty) {
         endpoint += '&universityCode=$_selectedUniversityCode';
       }
       if (_searchQuery.isNotEmpty) {
@@ -481,7 +571,8 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
         endpoint += '&studyForm=${Uri.encodeComponent(_selectedStudyForm!)}';
       }
       if (_selectedStudyLanguage != null) {
-        endpoint += '&studyLanguage=${Uri.encodeComponent(_selectedStudyLanguage!)}';
+        endpoint +=
+            '&studyLanguage=${Uri.encodeComponent(_selectedStudyLanguage!)}';
       }
       if (_minScore != null) {
         endpoint += '&minScore=$_minScore';
@@ -544,11 +635,19 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
           final rawList = jsonDecode(response.body) as List<dynamic>;
           // Sort descending by lastYearPassingScore (null treated as 0)
           rawList.sort((a, b) {
-            final scoreA = (a['lastYearPassingScore'] as num?)?.toDouble() ?? 0.0;
-            final scoreB = (b['lastYearPassingScore'] as num?)?.toDouble() ?? 0.0;
+            final scoreA =
+                (a['lastYearPassingScore'] as num?)?.toDouble() ?? 0.0;
+            final scoreB =
+                (b['lastYearPassingScore'] as num?)?.toDouble() ?? 0.0;
             return scoreB.compareTo(scoreA);
           });
           _savedSpecialties = rawList;
+          _savedKeys = rawList
+              .map(
+                (s) =>
+                    '${s['specialtyCode']}|${s['universityName']}|${s['studyForm']}|${s['studyType']}',
+              )
+              .toSet();
           _isLoadingSaved = false;
         });
       } else {
@@ -565,10 +664,15 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
 
   Future<void> _saveSpecialty(Map<String, dynamic> specialty) async {
     try {
-      final response = await ApiService.post('/api/Ntc/save-specialty', specialty);
+      final response = await ApiService.post(
+        '/api/Ntc/save-specialty',
+        specialty,
+      );
       if (response.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ихтисос ба заметкаҳо илова карда шуд.')),
+          const SnackBar(
+            content: Text('Ихтисос ба ихтисосҳои захирашуда илова карда шуд.'),
+          ),
         );
         _fetchSavedSpecialties();
       }
@@ -585,19 +689,26 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
       final univ = Uri.encodeComponent(specialty['universityName'] ?? '');
       final form = Uri.encodeComponent(specialty['studyForm'] ?? '');
       final type = Uri.encodeComponent(specialty['studyType'] ?? '');
-      final response = await ApiService.delete('/api/Ntc/saved-specialty/$code?universityName=$univ&studyForm=$form&studyType=$type');
+      final response = await ApiService.delete(
+        '/api/Ntc/saved-specialty/$code?universityName=$univ&studyForm=$form&studyType=$type',
+      );
       if (response.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ихтисос аз заметкаҳо нест карда шуд.')),
+          const SnackBar(
+            content: Text('Ихтисос аз ихтисосҳои захирашуда нест карда шуд.'),
+          ),
         );
-        
+
         // Synchronize selected Saved Specialties list
-        final list = List<dynamic>.from(SpecialtiesScreen.selectedSavedSpecialtiesNotifier.value);
-        list.removeWhere((x) =>
-          x['specialtyCode'] == specialty['specialtyCode'] &&
-          x['universityName'] == specialty['universityName'] &&
-          x['studyForm'] == specialty['studyForm'] &&
-          x['studyType'] == specialty['studyType']
+        final list = List<dynamic>.from(
+          SpecialtiesScreen.selectedSavedSpecialtiesNotifier.value,
+        );
+        list.removeWhere(
+          (x) =>
+              x['specialtyCode'] == specialty['specialtyCode'] &&
+              x['universityName'] == specialty['universityName'] &&
+              x['studyForm'] == specialty['studyForm'] &&
+              x['studyType'] == specialty['studyType'],
         );
         SpecialtiesScreen.selectedSavedSpecialtiesNotifier.value = list;
 
@@ -618,14 +729,24 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
     String? institutionType,
   }) async {
     final query = customPrompt ?? _aiPromptController.text.trim();
-    if (query.isEmpty && minPercent == null && city == null && direction == null && institutionType == null) return;
+    if (query.isEmpty &&
+        minPercent == null &&
+        city == null &&
+        direction == null &&
+        institutionType == null)
+      return;
 
     if (customPrompt == null) {
       _aiPromptController.clear();
     }
 
     setState(() {
-      _chatMessages.add(ChatMessage(text: query.isNotEmpty ? query : 'Филтри навбатӣ', isUser: true));
+      _chatMessages.add(
+        ChatMessage(
+          text: query.isNotEmpty ? query : 'Филтри навбатӣ',
+          isUser: true,
+        ),
+      );
       _isLoadingAi = true;
     });
 
@@ -643,38 +764,46 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
         final resBody = jsonDecode(response.body);
         final respText = resBody['responseText'] as String?;
         final recs = resBody['recommendations'] as List<dynamic>? ?? [];
-        final studyAlloc = resBody['studyTimeAllocation'] as Map<String, dynamic>?;
+        final studyAlloc =
+            resBody['studyTimeAllocation'] as Map<String, dynamic>?;
         final portfolioFeed = resBody['portfolioFeedback'] as String?;
         final whatIf = resBody['whatIfScenario'] as String?;
         final peerGroup = resBody['peerGroupRecommendationText'] as String?;
 
         setState(() {
-          _chatMessages.add(ChatMessage(
-            text: respText ?? '',
-            isUser: false,
-            recommendations: recs,
-            studyTimeAllocation: studyAlloc,
-            portfolioFeedback: portfolioFeed,
-            whatIfScenario: whatIf,
-            peerGroupRecommendationText: peerGroup,
-          ));
+          _chatMessages.add(
+            ChatMessage(
+              text: respText ?? '',
+              isUser: false,
+              recommendations: recs,
+              studyTimeAllocation: studyAlloc,
+              portfolioFeedback: portfolioFeed,
+              whatIfScenario: whatIf,
+              peerGroupRecommendationText: peerGroup,
+            ),
+          );
           _isLoadingAi = false;
         });
       } else {
         setState(() {
-          _chatMessages.add(ChatMessage(
-            text: 'Бухшиш, дар пайвастшавӣ хатогӣ рух дод. Лутфан, дертар кӯшиш кунед.',
-            isUser: false,
-          ));
+          _chatMessages.add(
+            ChatMessage(
+              text:
+                  'Бухшиш, дар пайвастшавӣ хатогӣ рух дод. Лутфан, дертар кӯшиш кунед.',
+              isUser: false,
+            ),
+          );
           _isLoadingAi = false;
         });
       }
     } catch (e) {
       setState(() {
-        _chatMessages.add(ChatMessage(
-          text: 'Алоқа бо сервер дастнорас аст. Пайвастшавии худро санҷед.',
-          isUser: false,
-        ));
+        _chatMessages.add(
+          ChatMessage(
+            text: 'Алоқа бо сервер дастнорас аст. Пайвастшавии худро санҷед.',
+            isUser: false,
+          ),
+        );
         _isLoadingAi = false;
       });
     }
@@ -738,7 +867,8 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
       filterPrompt += ' Равияи $_selectedDirection,';
     }
     if (_selectedInstitutionType != null) {
-      filterPrompt += ' Муассисаи ${_selectedInstitutionType == 'university' ? 'Донишгоҳӣ' : 'Коллеҷӣ'},';
+      filterPrompt +=
+          ' Муассисаи ${_selectedInstitutionType == 'university' ? 'Донишгоҳӣ' : 'Коллеҷӣ'},';
     }
     if (filterPrompt.endsWith(',')) {
       filterPrompt = filterPrompt.substring(0, filterPrompt.length - 1);
@@ -780,7 +910,11 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
           label,
           style: TextStyle(
             fontSize: 11,
-            color: isSelected ? Colors.white : (color.computeLuminance() > 0.5 ? Colors.black87 : Colors.black54),
+            color: isSelected
+                ? Colors.white
+                : (color.computeLuminance() > 0.5
+                      ? Colors.black87
+                      : Colors.black54),
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           ),
         ),
@@ -804,7 +938,6 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
     });
   }
 
-
   void _onSearchChanged(String query) {
     setState(() {
       _searchQuery = query;
@@ -820,11 +953,26 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
   }
 
   bool _isSpecialtySaved(dynamic spec) {
-    return _savedSpecialties.any((s) =>
-        s['specialtyCode'] == spec['specialtyCode'] &&
-        s['universityName'] == spec['universityName'] &&
-        s['studyForm'] == spec['studyForm'] &&
-        s['studyType'] == spec['studyType']);
+    final key =
+        '${spec['specialtyCode']}|${spec['universityName']}|${spec['studyForm']}|${spec['studyType']}';
+    return _savedKeys.contains(key);
+  }
+
+  String _getClusterName(int clusterId) {
+    switch (clusterId) {
+      case 1:
+        return 'Кластери 1 — Табиӣ ва техникӣ';
+      case 2:
+        return 'Кластери 2 — Иқтисод ва география';
+      case 3:
+        return 'Кластери 3 — Филология, педагогика ва санъат';
+      case 4:
+        return 'Кластери 4 — Ҷомеашиносӣ ва ҳуқуқ';
+      case 5:
+        return 'Кластери 5 — Тиб, биология ва варзиш';
+      default:
+        return 'Ҳамаи кластерҳо';
+    }
   }
 
   Map<String, dynamic> _toMap(dynamic specialty) {
@@ -841,7 +989,7 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
       'tuitionFee': specialty['tuitionFee'],
       'studyLanguage': specialty['studyLanguage'] ?? '',
       'planSeats': specialty['planSeats'] ?? 0,
-      'lastYearPassingScore': specialty['lastYearPassingScore']
+      'lastYearPassingScore': specialty['lastYearPassingScore'],
     };
   }
 
@@ -853,42 +1001,123 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
     final theme = Theme.of(context);
     final textColor = isDarkMode ? Colors.white : Colors.black;
     final primaryColor = const Color(0xFF22873B);
-    final cardColor = isDarkMode ? Colors.white.withOpacity(0.04) : Colors.white;
+    final cardColor = isDarkMode
+        ? Colors.white.withOpacity(0.04)
+        : Colors.white;
     final backgroundColor = isDarkMode ? Colors.black : const Color(0xFFF1F8F4);
 
     return Scaffold(
       backgroundColor: backgroundColor,
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const AiTutorScreen()),
-          );
-        },
-        backgroundColor: primaryColor,
-        icon: const Icon(Icons.school, color: Colors.white, size: 20),
-        label: const Text('Мураббӣ', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Main Body Stack
-            Expanded(
-              child: IndexedStack(
-                index: _activeTab,
+      appBar: widget.isSavedOnly
+          ? AppBar(
+              backgroundColor: isDarkMode ? Colors.black : Colors.white,
+              elevation: 0,
+              leading: IconButton(
+                icon: Icon(Icons.arrow_back, color: textColor),
+                onPressed: () => Navigator.pop(context),
+              ),
+              title: Text(
+                'Ихтисосҳои захирашуда',
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              actions: [
+                ValueListenableBuilder<List<dynamic>>(
+                  valueListenable:
+                      SpecialtiesScreen.selectedSavedSpecialtiesNotifier,
+                  builder: (context, selectedList, _) {
+                    if (selectedList.isNotEmpty) {
+                      return IconButton(
+                        icon: const Icon(
+                          Icons.picture_as_pdf,
+                          color: Color(0xFF22873B),
+                        ),
+                        tooltip: 'Чопи PDF',
+                        onPressed: () {
+                          SpecialtiesScreen.printSelectedSpecialties(context);
+                        },
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
+                ),
+                const SizedBox(width: 8),
+              ],
+            )
+          : null,
+      floatingActionButton: widget.isSavedOnly
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const AiTutorScreen()),
+                );
+              },
+              backgroundColor: primaryColor,
+              icon: const Icon(Icons.school, color: Colors.white, size: 20),
+              label: const Text(
+                'Мураббӣ',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+      body: widget.isSavedOnly
+          ? SafeArea(
+              child: _buildSavedView(
+                textColor,
+                isDarkMode,
+                cardColor,
+                primaryColor,
+              ),
+            )
+          : SafeArea(
+              child: Column(
                 children: [
-                  _buildBrowseView(textColor, isDarkMode, cardColor, primaryColor, isAdmin),
-                  _buildAiView(textColor, isDarkMode, cardColor, primaryColor),
-                  _buildSavedView(textColor, isDarkMode, cardColor, primaryColor),
+                  // Main Body Stack
+                  Expanded(
+                    child: IndexedStack(
+                      index: _activeTab,
+                      children: [
+                        _buildBrowseView(
+                          textColor,
+                          isDarkMode,
+                          cardColor,
+                          primaryColor,
+                          isAdmin,
+                        ),
+                        _buildAiView(
+                          textColor,
+                          isDarkMode,
+                          cardColor,
+                          primaryColor,
+                        ),
+                        _buildSavedView(
+                          textColor,
+                          isDarkMode,
+                          cardColor,
+                          primaryColor,
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
-          ],
-        ),
-      ),
     );
   }
 
-  Widget _buildTabButton(int index, String label, IconData icon, bool isDarkMode) {
+  Widget _buildTabButton(
+    int index,
+    String label,
+    IconData icon,
+    bool isDarkMode,
+  ) {
     final isSelected = _activeTab == index;
     return Expanded(
       child: GestureDetector(
@@ -912,13 +1141,17 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
               Icon(
                 icon,
                 size: 15,
-                color: isSelected ? Colors.white : (isDarkMode ? Colors.white70 : Colors.black87),
+                color: isSelected
+                    ? Colors.white
+                    : (isDarkMode ? Colors.white70 : Colors.black87),
               ),
               const SizedBox(width: 4),
               Text(
                 label,
                 style: TextStyle(
-                  color: isSelected ? Colors.white : (isDarkMode ? Colors.white70 : Colors.black87),
+                  color: isSelected
+                      ? Colors.white
+                      : (isDarkMode ? Colors.white70 : Colors.black87),
                   fontSize: 11,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 ),
@@ -930,7 +1163,13 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
     );
   }
 
-  Widget _buildBrowseView(Color textColor, bool isDarkMode, Color cardColor, Color primaryColor, bool isAdmin) {
+  Widget _buildBrowseView(
+    Color textColor,
+    bool isDarkMode,
+    Color cardColor,
+    Color primaryColor,
+    bool isAdmin,
+  ) {
     return Column(
       children: [
         // Search & Filters bar
@@ -959,8 +1198,15 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
                       style: TextStyle(color: textColor, fontSize: 14),
                       decoration: InputDecoration(
                         hintText: 'Ҷустуҷӯ аз рӯи ихтисос ё донишгоҳ...',
-                        hintStyle: TextStyle(color: textColor.withOpacity(0.4), fontSize: 14),
-                        prefixIcon: Icon(Icons.search, color: textColor.withOpacity(0.4), size: 20),
+                        hintStyle: TextStyle(
+                          color: textColor.withOpacity(0.4),
+                          fontSize: 14,
+                        ),
+                        prefixIcon: Icon(
+                          Icons.search,
+                          color: textColor.withOpacity(0.4),
+                          size: 20,
+                        ),
                         suffixIcon: _searchQuery.isNotEmpty
                             ? IconButton(
                                 icon: const Icon(Icons.clear, size: 18),
@@ -971,8 +1217,13 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
                               )
                             : null,
                         filled: true,
-                        fillColor: isDarkMode ? Colors.white.withOpacity(0.06) : const Color(0xFFF1F8F4),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        fillColor: isDarkMode
+                            ? Colors.white.withOpacity(0.06)
+                            : const Color(0xFFF1F8F4),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
                           borderSide: BorderSide.none,
@@ -992,7 +1243,9 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
                           decoration: BoxDecoration(
                             color: _hasActiveAdvancedFilters()
                                 ? const Color(0xFF22873B)
-                                : (isDarkMode ? Colors.white.withOpacity(0.06) : const Color(0xFFF1F8F4)),
+                                : (isDarkMode
+                                      ? Colors.white.withOpacity(0.06)
+                                      : const Color(0xFFF1F8F4)),
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: Icon(
@@ -1043,45 +1296,119 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
           child: _isLoadingSpecialties
               ? Center(child: CircularProgressIndicator(color: primaryColor))
               : _specialties.isEmpty
-                  ? _buildEmptyState(textColor)
-                  : NotificationListener<ScrollNotification>(
-                      onNotification: (ScrollNotification scrollInfo) {
-                        if (!_isLoadMore &&
-                            _currentPage < _totalPages &&
-                            scrollInfo.metrics.pixels == scrollInfo.metrics.maxScrollExtent) {
-                          _currentPage++;
-                          _fetchSpecialties(reset: false);
-                          return true;
-                        }
-                        return false;
-                      },
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.vertical,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: _buildSpecialtiesTable(_specialties, textColor, isDarkMode, primaryColor, false),
-                            ),
-                            if (_isLoadMore)
-                              Padding(
-                                padding: const EdgeInsets.all(16.0),
-                                child: Center(
-                                  child: CircularProgressIndicator(color: primaryColor),
-                                ),
-                              ),
-                          ],
+              ? _buildEmptyState(textColor)
+              : NotificationListener<ScrollNotification>(
+                  onNotification: (ScrollNotification scrollInfo) {
+                    if (scrollInfo.metrics.axis != Axis.vertical) {
+                      return false;
+                    }
+                    if (!_isLoadMore &&
+                        _currentPage < _totalPages &&
+                        scrollInfo.metrics.pixels >=
+                            scrollInfo.metrics.maxScrollExtent - 200) {
+                      _currentPage++;
+                      _fetchSpecialties(reset: false);
+                      return true;
+                    }
+                    return false;
+                  },
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          left: 18,
+                          top: 12,
+                          bottom: 4,
+                        ),
+                        child: Text(
+                          _getClusterName(_selectedClusterId),
+                          style: TextStyle(
+                            color: primaryColor,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
-                    ),
+                      Expanded(
+                        child: Container(
+                          margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                          decoration: BoxDecoration(
+                            color: isDarkMode ? Colors.black : Colors.white,
+                            border: Border.all(
+                              color: isDarkMode
+                                  ? Colors.grey.shade800
+                                  : Colors.black,
+                              width: 0.5,
+                            ),
+                          ),
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: SizedBox(
+                              width: 900,
+                              child: Column(
+                                children: [
+                                  _buildTableHeader(
+                                    false,
+                                    textColor,
+                                    isDarkMode,
+                                  ),
+                                  Expanded(
+                                    child: ListView.builder(
+                                      itemExtent: 48,
+                                      physics:
+                                          const AlwaysScrollableScrollPhysics(),
+                                      itemCount:
+                                          _specialties.length +
+                                          (_isLoadMore ? 1 : 0),
+                                      itemBuilder: (context, index) {
+                                        if (index == _specialties.length) {
+                                          return SizedBox(
+                                            height: 48,
+                                            child: Center(
+                                              child: SizedBox(
+                                                height: 24,
+                                                width: 24,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                      color: primaryColor,
+                                                      strokeWidth: 2,
+                                                    ),
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                        return _buildTableRowItem(
+                                          _specialties[index],
+                                          index,
+                                          textColor,
+                                          isDarkMode,
+                                          primaryColor,
+                                          false,
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
         ),
       ],
     );
   }
 
-  Widget _buildAiView(Color textColor, bool isDarkMode, Color cardColor, Color primaryColor) {
+  Widget _buildAiView(
+    Color textColor,
+    bool isDarkMode,
+    Color cardColor,
+    Color primaryColor,
+  ) {
     return Column(
       children: [
         // Chat History List
@@ -1097,16 +1424,23 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
                   alignment: Alignment.centerLeft,
                   child: Container(
                     margin: const EdgeInsets.only(bottom: 16, right: 64),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                     decoration: BoxDecoration(
-                      color: isDarkMode ? Colors.white.withOpacity(0.05) : Colors.white,
+                      color: isDarkMode
+                          ? Colors.white.withOpacity(0.05)
+                          : Colors.white,
                       borderRadius: const BorderRadius.only(
                         topRight: Radius.circular(16),
                         bottomRight: Radius.circular(16),
                         topLeft: Radius.circular(16),
                       ),
                       border: Border.all(
-                        color: isDarkMode ? Colors.white10 : const Color(0xFFD1E2D5),
+                        color: isDarkMode
+                            ? Colors.white10
+                            : const Color(0xFFD1E2D5),
                       ),
                     ),
                     child: Row(
@@ -1115,7 +1449,10 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
                         const SizedBox(
                           width: 14,
                           height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.green),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.green,
+                          ),
                         ),
                         const SizedBox(width: 10),
                         Text(
@@ -1133,7 +1470,9 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
               }
 
               final msg = _chatMessages[index];
-              final lastAiIndex = _chatMessages.lastIndexWhere((m) => !m.isUser);
+              final lastAiIndex = _chatMessages.lastIndexWhere(
+                (m) => !m.isUser,
+              );
               final isLatestAi = lastAiIndex == index;
               return _buildChatMessageItem(
                 msg,
@@ -1151,7 +1490,9 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
         Container(
           padding: const EdgeInsets.symmetric(vertical: 4),
           decoration: BoxDecoration(
-            color: isDarkMode ? const Color(0xFF151515) : const Color(0xFFF3F8F5),
+            color: isDarkMode
+                ? const Color(0xFF151515)
+                : const Color(0xFFF3F8F5),
             border: Border(
               top: BorderSide(
                 color: isDarkMode ? Colors.white12 : const Color(0xFFD1E2D5),
@@ -1190,12 +1531,20 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
                   onSelected: () => _togglePercentFilter(30),
                 ),
                 const SizedBox(width: 8),
-                Container(width: 1, height: 20, color: isDarkMode ? Colors.white24 : Colors.grey.withOpacity(0.3)),
+                Container(
+                  width: 1,
+                  height: 20,
+                  color: isDarkMode
+                      ? Colors.white24
+                      : Colors.grey.withOpacity(0.3),
+                ),
                 const SizedBox(width: 8),
 
                 // 2. City Filter
                 _buildFilterGroupLabel('Шаҳр:'),
-                ...['Душанбе', 'Хуҷанд', 'Кӯлоб', 'Бохтар', 'Данғара'].map((city) {
+                ...['Душанбе', 'Хуҷанд', 'Кӯлоб', 'Бохтар', 'Данғара'].map((
+                  city,
+                ) {
                   return _buildAiFilterChip(
                     label: city,
                     isSelected: _selectedCity == city,
@@ -1204,12 +1553,20 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
                   );
                 }),
                 const SizedBox(width: 8),
-                Container(width: 1, height: 20, color: isDarkMode ? Colors.white24 : Colors.grey.withOpacity(0.3)),
+                Container(
+                  width: 1,
+                  height: 20,
+                  color: isDarkMode
+                      ? Colors.white24
+                      : Colors.grey.withOpacity(0.3),
+                ),
                 const SizedBox(width: 8),
 
                 // 3. Direction Filter
                 _buildFilterGroupLabel('Равия:'),
-                ...['Дандонпизишк', 'Ҷарроҳӣ', 'Дорусозӣ', 'Педиатр'].map((dir) {
+                ...['Дандонпизишк', 'Ҷарроҳӣ', 'Дорусозӣ', 'Педиатр'].map((
+                  dir,
+                ) {
                   return _buildAiFilterChip(
                     label: dir,
                     isSelected: _selectedDirection == dir,
@@ -1218,7 +1575,13 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
                   );
                 }),
                 const SizedBox(width: 8),
-                Container(width: 1, height: 20, color: isDarkMode ? Colors.white24 : Colors.grey.withOpacity(0.3)),
+                Container(
+                  width: 1,
+                  height: 20,
+                  color: isDarkMode
+                      ? Colors.white24
+                      : Colors.grey.withOpacity(0.3),
+                ),
                 const SizedBox(width: 8),
 
                 // 4. Institution Type Filter
@@ -1257,15 +1620,24 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
                 child: TextField(
                   controller: _aiPromptController,
                   style: TextStyle(color: textColor, fontSize: 13),
-                  maxLines: null,
-                  textInputAction: TextInputAction.send,
+                  keyboardType: TextInputType.multiline,
+                  minLines: 1,
+                  maxLines: 5,
                   onSubmitted: (_) => _askAiRecommend(),
                   decoration: InputDecoration(
                     hintText: 'Савол диҳед: "кадом ихтисос барои ман хуб аст?"',
-                    hintStyle: TextStyle(color: textColor.withOpacity(0.4), fontSize: 13),
+                    hintStyle: TextStyle(
+                      color: textColor.withOpacity(0.4),
+                      fontSize: 13,
+                    ),
                     filled: true,
-                    fillColor: isDarkMode ? Colors.white.withOpacity(0.06) : const Color(0xFFF1F8F4),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    fillColor: isDarkMode
+                        ? Colors.white.withOpacity(0.06)
+                        : const Color(0xFFF1F8F4),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(24),
                       borderSide: BorderSide.none,
@@ -1282,11 +1654,7 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
                     color: _isLoadingAi ? Colors.grey : const Color(0xFF22873B),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
-                    Icons.send,
-                    color: Colors.white,
-                    size: 18,
-                  ),
+                  child: const Icon(Icons.send, color: Colors.white, size: 18),
                 ),
               ),
             ],
@@ -1337,7 +1705,9 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
                 decoration: BoxDecoration(
                   color: const Color(0xFFE8F5E9),
                   shape: BoxShape.circle,
-                  border: Border.all(color: const Color(0xFF22873B).withOpacity(0.2)),
+                  border: Border.all(
+                    color: const Color(0xFF22873B).withOpacity(0.2),
+                  ),
                 ),
                 child: const Icon(
                   Icons.school,
@@ -1379,7 +1749,12 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
           ),
 
           if (showDashboard)
-            _buildAiAnalyticsDashboard(msg, isDarkMode, textColor, primaryColor),
+            _buildAiAnalyticsDashboard(
+              msg,
+              isDarkMode,
+              textColor,
+              primaryColor,
+            ),
 
           // Render Inline specialty cards if recommended
           if (msg.recommendations.isNotEmpty) ...[
@@ -1419,7 +1794,9 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
               return Container(
                 margin: const EdgeInsets.only(bottom: 14, right: 16),
                 decoration: BoxDecoration(
-                  color: isDarkMode ? Colors.white.withOpacity(0.04) : Colors.white,
+                  color: isDarkMode
+                      ? Colors.white.withOpacity(0.04)
+                      : Colors.white,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: badgeColor.withOpacity(0.3),
@@ -1435,7 +1812,10 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: badgeColor.withOpacity(0.15),
                               borderRadius: BorderRadius.circular(20),
@@ -1451,8 +1831,12 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
                           ),
                           IconButton(
                             icon: Icon(
-                              _isSpecialtySaved(spec) ? Icons.bookmark : Icons.bookmark_border,
-                              color: _isSpecialtySaved(spec) ? const Color(0xFF22873B) : textColor.withOpacity(0.4),
+                              _isSpecialtySaved(spec)
+                                  ? Icons.bookmark
+                                  : Icons.bookmark_border,
+                              color: _isSpecialtySaved(spec)
+                                  ? const Color(0xFF22873B)
+                                  : textColor.withOpacity(0.4),
                               size: 18,
                             ),
                             onPressed: () {
@@ -1492,14 +1876,19 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
                             children: [
                               _buildCardInfoChip(
                                 Icons.payments_outlined,
-                                spec['tuitionFee'] != null ? '${spec['tuitionFee']} сомонӣ' : 'Ройгон',
-                                spec['tuitionFee'] != null ? Colors.amber : Colors.green,
+                                spec['tuitionFee'] != null
+                                    ? '${spec['tuitionFee']} сомонӣ'
+                                    : 'Ройгон',
+                                spec['tuitionFee'] != null
+                                    ? Colors.amber
+                                    : Colors.green,
                                 isDarkMode,
                               ),
                               const SizedBox(width: 8),
                               _buildCardInfoChip(
                                 Icons.emoji_events_outlined,
-                                spec['lastYearPassingScore'] != null && spec['lastYearPassingScore'] > 0
+                                spec['lastYearPassingScore'] != null &&
+                                        spec['lastYearPassingScore'] > 0
                                     ? '${spec['lastYearPassingScore']} бал'
                                     : 'Бал: озод',
                                 Colors.blue,
@@ -1548,19 +1937,30 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
                             const SizedBox(height: 6),
                             Container(
                               width: double.infinity,
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.red.withOpacity(0.08),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 14),
+                                  const Icon(
+                                    Icons.warning_amber_rounded,
+                                    color: Colors.redAccent,
+                                    size: 14,
+                                  ),
                                   const SizedBox(width: 6),
                                   Expanded(
                                     child: Text(
                                       'Барои шонси 75% дохил шудан ба шумо боз $pointsShort75 хол намерасад.',
-                                      style: const TextStyle(color: Colors.redAccent, fontSize: 10, fontWeight: FontWeight.bold),
+                                      style: const TextStyle(
+                                        color: Colors.redAccent,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -1581,8 +1981,12 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
     }
   }
 
-
-  Widget _buildSavedView(Color textColor, bool isDarkMode, Color cardColor, Color primaryColor) {
+  Widget _buildSavedView(
+    Color textColor,
+    bool isDarkMode,
+    Color cardColor,
+    Color primaryColor,
+  ) {
     if (_isLoadingSaved) {
       return Center(child: CircularProgressIndicator(color: primaryColor));
     }
@@ -1592,10 +1996,14 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.bookmark_outline, size: 64, color: textColor.withOpacity(0.2)),
+            Icon(
+              Icons.bookmark_outline,
+              size: 64,
+              color: textColor.withOpacity(0.2),
+            ),
             const SizedBox(height: 16),
             Text(
-              'Заметкаҳо холӣ мебошанд',
+              'Ихтисосҳои захирашуда холӣ мебошанд',
               style: TextStyle(
                 color: textColor.withOpacity(0.8),
                 fontSize: 16,
@@ -1604,28 +2012,61 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
             ),
             const SizedBox(height: 6),
             Text(
-              'Ихтисосҳоро аз қисмати ҷустуҷӯ ё AI ба заметкаҳо илова кунед',
-              style: TextStyle(
-                color: textColor.withOpacity(0.5),
-                fontSize: 13,
-              ),
+              'Ихтисосҳоро аз қисмати ҷустуҷӯ ё AI ба ихтисосҳои захирашуда илова кунед',
+              style: TextStyle(color: textColor.withOpacity(0.5), fontSize: 13),
             ),
           ],
         ),
       );
     }
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.vertical,
-      padding: const EdgeInsets.all(16),
+    return Container(
+      margin: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDarkMode ? Colors.black : Colors.white,
+        border: Border.all(
+          color: isDarkMode ? Colors.grey.shade800 : Colors.black,
+          width: 0.5,
+        ),
+      ),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        child: _buildSpecialtiesTable(_savedSpecialties, textColor, isDarkMode, primaryColor, true),
+        child: SizedBox(
+          width: 960,
+          child: Column(
+            children: [
+              _buildTableHeader(true, textColor, isDarkMode),
+              Expanded(
+                child: ListView.builder(
+                  itemExtent: 48,
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  itemCount: _savedSpecialties.length,
+                  itemBuilder: (context, index) {
+                    return _buildTableRowItem(
+                      _savedSpecialties[index],
+                      index,
+                      textColor,
+                      isDarkMode,
+                      primaryColor,
+                      true,
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildSpecialtyCard(dynamic item, Color textColor, Color cardColor, bool isDarkMode, bool isSavedView) {
+  Widget _buildSpecialtyCard(
+    dynamic item,
+    Color textColor,
+    Color cardColor,
+    bool isDarkMode,
+    bool isSavedView,
+  ) {
     final specName = item['specialtyName']?.toString() ?? '';
     final specCode = item['specialtyCode']?.toString() ?? '';
     final univName = item['universityName']?.toString() ?? '';
@@ -1636,7 +2077,9 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
     final planSeats = (item['planSeats'] as num?)?.toInt() ?? 0;
     final lastYearScore = (item['lastYearPassingScore'] as num?)?.toDouble();
 
-    final isFree = studyType.toLowerCase().contains('ройгон') || studyType.toLowerCase().contains('буҷет');
+    final isFree =
+        studyType.toLowerCase().contains('ройгон') ||
+        studyType.toLowerCase().contains('буҷет');
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -1644,7 +2087,9 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
         color: cardColor,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isDarkMode ? Colors.white.withOpacity(0.08) : const Color(0xFF22873B).withOpacity(0.15),
+          color: isDarkMode
+              ? Colors.white.withOpacity(0.08)
+              : const Color(0xFF22873B).withOpacity(0.15),
           width: 1,
         ),
         boxShadow: isDarkMode
@@ -1664,8 +2109,12 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
           Container(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
             decoration: BoxDecoration(
-              color: isDarkMode ? Colors.white.withOpacity(0.02) : const Color(0xFFF1F8F4),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              color: isDarkMode
+                  ? Colors.white.withOpacity(0.02)
+                  : const Color(0xFFF1F8F4),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(20),
+              ),
             ),
             child: Row(
               children: [
@@ -1673,19 +2122,28 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
                   child: Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
-                          color: isFree ? const Color(0xFFE8F5E9) : const Color(0xFFFFF3E0),
+                          color: isFree
+                              ? const Color(0xFFE8F5E9)
+                              : const Color(0xFFFFF3E0),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: isFree ? const Color(0xFFA5D6A7) : const Color(0xFFFFCC80),
+                            color: isFree
+                                ? const Color(0xFFA5D6A7)
+                                : const Color(0xFFFFCC80),
                             width: 1,
                           ),
                         ),
                         child: Text(
                           isFree ? 'Ройгон (Буҷет)' : 'Пулакӣ (Шартнома)',
                           style: TextStyle(
-                            color: isFree ? const Color(0xFF2E7D32) : const Color(0xFFE65100),
+                            color: isFree
+                                ? const Color(0xFF2E7D32)
+                                : const Color(0xFFE65100),
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
                           ),
@@ -1693,9 +2151,14 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
                       ),
                       const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
-                          color: isDarkMode ? Colors.white.withOpacity(0.08) : Colors.grey.shade200,
+                          color: isDarkMode
+                              ? Colors.white.withOpacity(0.08)
+                              : Colors.grey.shade200,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
@@ -1714,8 +2177,16 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                   icon: Icon(
-                    isSavedView ? Icons.delete_outline : (_isSpecialtySaved(item) ? Icons.bookmark : Icons.bookmark_border),
-                    color: isSavedView ? Colors.red : (_isSpecialtySaved(item) ? const Color(0xFF22873B) : textColor.withOpacity(0.4)),
+                    isSavedView
+                        ? Icons.delete_outline
+                        : (_isSpecialtySaved(item)
+                              ? Icons.bookmark
+                              : Icons.bookmark_border),
+                    color: isSavedView
+                        ? Colors.red
+                        : (_isSpecialtySaved(item)
+                              ? const Color(0xFF22873B)
+                              : textColor.withOpacity(0.4)),
                     size: 22,
                   ),
                   onPressed: () {
@@ -1733,7 +2204,7 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
               ],
             ),
           ),
-          
+
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -1766,7 +2237,7 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
                   ],
                 ),
                 const SizedBox(height: 8),
-                
+
                 // Specialty Name
                 Text(
                   specName,
@@ -1778,7 +2249,7 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                
+
                 // University Name
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1802,15 +2273,19 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Key-value Grid (Clean rows)
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: isDarkMode ? Colors.white.withOpacity(0.02) : const Color(0xFFF9FBF9),
+                    color: isDarkMode
+                        ? Colors.white.withOpacity(0.02)
+                        : const Color(0xFFF9FBF9),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: isDarkMode ? Colors.white.withOpacity(0.04) : Colors.grey.shade100,
+                      color: isDarkMode
+                          ? Colors.white.withOpacity(0.04)
+                          : Colors.grey.shade100,
                     ),
                   ),
                   child: Column(
@@ -1827,16 +2302,26 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
                       _buildInfoRow(
                         Icons.payments_outlined,
                         'Маблағи таҳсил (Пул):',
-                        isFree ? 'Ройгон' : (tuitionFee != null ? '$tuitionFee сомонӣ' : 'Шартнома'),
-                        isFree ? const Color(0xFF2E7D32) : const Color(0xFFE65100),
+                        isFree
+                            ? 'Ройгон'
+                            : (tuitionFee != null
+                                  ? '$tuitionFee сомонӣ'
+                                  : 'Шартнома'),
+                        isFree
+                            ? const Color(0xFF2E7D32)
+                            : const Color(0xFFE65100),
                       ),
                       const Divider(height: 16, thickness: 0.5),
                       // Last Year's Passing Score
                       _buildInfoRow(
                         Icons.trending_up,
                         'Бали гузариши соли гузашта:',
-                        (lastYearScore != null && lastYearScore > 0) ? '$lastYearScore бал' : 'Муайян нашуда',
-                        (lastYearScore != null && lastYearScore > 0) ? const Color(0xFF22873B) : textColor.withOpacity(0.5),
+                        (lastYearScore != null && lastYearScore > 0)
+                            ? '$lastYearScore бал'
+                            : 'Муайян нашуда',
+                        (lastYearScore != null && lastYearScore > 0)
+                            ? const Color(0xFF22873B)
+                            : textColor.withOpacity(0.5),
                       ),
                     ],
                   ),
@@ -1849,7 +2334,12 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value, Color valueColor) {
+  Widget _buildInfoRow(
+    IconData icon,
+    String label,
+    String value,
+    Color valueColor,
+  ) {
     return Row(
       children: [
         Icon(icon, size: 16, color: Colors.grey),
@@ -1857,10 +2347,7 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
         Expanded(
           child: Text(
             label,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Colors.grey,
-            ),
+            style: const TextStyle(fontSize: 12, color: Colors.grey),
           ),
         ),
         Text(
@@ -1876,12 +2363,15 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
   }
 
   void _toggleSavedSelection(dynamic item, bool? checked) {
-    final list = List<dynamic>.from(SpecialtiesScreen.selectedSavedSpecialtiesNotifier.value);
-    final isChecked = list.any((x) =>
-      x['specialtyCode'] == item['specialtyCode'] &&
-      x['universityName'] == item['universityName'] &&
-      x['studyForm'] == item['studyForm'] &&
-      x['studyType'] == item['studyType']
+    final list = List<dynamic>.from(
+      SpecialtiesScreen.selectedSavedSpecialtiesNotifier.value,
+    );
+    final isChecked = list.any(
+      (x) =>
+          x['specialtyCode'] == item['specialtyCode'] &&
+          x['universityName'] == item['universityName'] &&
+          x['studyForm'] == item['studyForm'] &&
+          x['studyType'] == item['studyType'],
     );
 
     if (checked == true) {
@@ -1893,11 +2383,12 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
         list.add(item);
       }
     } else {
-      list.removeWhere((x) =>
-        x['specialtyCode'] == item['specialtyCode'] &&
-        x['universityName'] == item['universityName'] &&
-        x['studyForm'] == item['studyForm'] &&
-        x['studyType'] == item['studyType']
+      list.removeWhere(
+        (x) =>
+            x['specialtyCode'] == item['specialtyCode'] &&
+            x['universityName'] == item['universityName'] &&
+            x['studyForm'] == item['studyForm'] &&
+            x['studyType'] == item['studyType'],
       );
     }
     SpecialtiesScreen.selectedSavedSpecialtiesNotifier.value = list;
@@ -1928,7 +2419,11 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+                    const Icon(
+                      Icons.warning_amber_rounded,
+                      color: Colors.orange,
+                      size: 28,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -1936,7 +2431,9 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.white
+                              : Colors.black,
                         ),
                       ),
                     ),
@@ -1959,179 +2456,16 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
     });
   }
 
-  Widget _buildSpecialtiesTable(List<dynamic> items, Color textColor, bool isDarkMode, Color primaryColor, bool isSavedView) {
-    return Container(
-      decoration: BoxDecoration(
-        color: isDarkMode ? Colors.grey.shade900 : Colors.white,
-        border: Border.all(color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Theme(
-        data: Theme.of(context).copyWith(
-          dividerColor: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300,
-        ),
-        child: DataTable(
-          columnSpacing: 14,
-          horizontalMargin: 10,
-          headingRowHeight: 48,
-          dataRowMinHeight: 38,
-          dataRowMaxHeight: 52,
-          headingRowColor: MaterialStateProperty.all(isDarkMode ? const Color(0xFF1B5E20).withOpacity(0.3) : const Color(0xFFE8F5E9)),
-          border: TableBorder.all(
-            color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade300,
-            width: 1,
-          ),
-          columns: [
-            DataColumn(label: Text('ID', style: TextStyle(color: isDarkMode ? Colors.green.shade200 : const Color(0xFF2E7D32), fontWeight: FontWeight.bold, fontSize: 11))),
-            if (isSavedView)
-              const DataColumn(label: Text('Интихоб', style: TextStyle(color: Color(0xFF2E7D32), fontWeight: FontWeight.bold, fontSize: 11))),
-            DataColumn(label: Text('Рамзи ихтисос', style: TextStyle(color: isDarkMode ? Colors.green.shade200 : const Color(0xFF2E7D32), fontWeight: FontWeight.bold, fontSize: 11))),
-            DataColumn(label: Text('Гурӯҳи ихтисосҳо', style: TextStyle(color: isDarkMode ? Colors.green.shade200 : const Color(0xFF2E7D32), fontWeight: FontWeight.bold, fontSize: 11))),
-            DataColumn(label: Text('Муассисаи таълимӣ', style: TextStyle(color: isDarkMode ? Colors.green.shade200 : const Color(0xFF2E7D32), fontWeight: FontWeight.bold, fontSize: 11))),
-            DataColumn(label: Text('Номи ихтисос', style: TextStyle(color: isDarkMode ? Colors.green.shade200 : const Color(0xFF2E7D32), fontWeight: FontWeight.bold, fontSize: 11))),
-            DataColumn(label: Text('Шакли таҳсил', style: TextStyle(color: isDarkMode ? Colors.green.shade200 : const Color(0xFF2E7D32), fontWeight: FontWeight.bold, fontSize: 11))),
-            DataColumn(label: Text('Намуди таҳсил', style: TextStyle(color: isDarkMode ? Colors.green.shade200 : const Color(0xFF2E7D32), fontWeight: FontWeight.bold, fontSize: 11))),
-            DataColumn(label: Text('Маблағи таҳсил', style: TextStyle(color: isDarkMode ? Colors.green.shade200 : const Color(0xFF2E7D32), fontWeight: FontWeight.bold, fontSize: 11))),
-            DataColumn(label: Text('Забони таҳсил', style: TextStyle(color: isDarkMode ? Colors.green.shade200 : const Color(0xFF2E7D32), fontWeight: FontWeight.bold, fontSize: 11))),
-            DataColumn(label: Text('Нақша', style: TextStyle(color: isDarkMode ? Colors.green.shade200 : const Color(0xFF2E7D32), fontWeight: FontWeight.bold, fontSize: 11))),
-            DataColumn(label: Text('Зинаи таҳсил', style: TextStyle(color: isDarkMode ? Colors.green.shade200 : const Color(0xFF2E7D32), fontWeight: FontWeight.bold, fontSize: 11))),
-            DataColumn(label: Text('Бали гузариш', style: TextStyle(color: isDarkMode ? Colors.green.shade200 : const Color(0xFF2E7D32), fontWeight: FontWeight.bold, fontSize: 11))),
-            DataColumn(label: Text('Амал', style: TextStyle(color: isDarkMode ? Colors.green.shade200 : const Color(0xFF2E7D32), fontWeight: FontWeight.bold, fontSize: 11))),
-          ],
-          rows: items.asMap().entries.map((entry) {
-            final idx = entry.key + 1;
-            final item = entry.value;
-
-            final id = item['id']?.toString() ?? '';
-            final specName = item['specialtyName']?.toString() ?? '';
-            final specCode = item['specialtyCode']?.toString() ?? '';
-            final univName = item['universityName']?.toString() ?? '';
-            final studyForm = item['studyForm']?.toString() ?? 'рӯзона';
-            final studyType = item['studyType']?.toString() ?? '';
-            final tuitionFee = (item['tuitionFee'] as num?)?.toInt();
-            final studyLanguage = item['studyLanguage']?.toString() ?? 'тоҷикӣ';
-            final planSeats = (item['planSeats'] as num?)?.toInt() ?? 0;
-            final lastYearScore = (item['lastYearPassingScore'] as num?)?.toDouble();
-            final clusterName = item['clusterName']?.toString() ?? '';
-
-            final isFree = studyType.toLowerCase().contains('ройгон') || studyType.toLowerCase().contains('буҷет');
-
-            return DataRow(
-              cells: [
-                DataCell(Text(id.isNotEmpty ? id : idx.toString(), style: TextStyle(color: textColor, fontSize: 11))),
-                if (isSavedView)
-                  DataCell(
-                    ValueListenableBuilder<List<dynamic>>(
-                      valueListenable: SpecialtiesScreen.selectedSavedSpecialtiesNotifier,
-                      builder: (context, selectedList, _) {
-                        final isChecked = selectedList.any((x) => 
-                          x['specialtyCode'] == item['specialtyCode'] &&
-                          x['universityName'] == item['universityName'] &&
-                          x['studyForm'] == item['studyForm'] &&
-                          x['studyType'] == item['studyType']
-                        );
-                        return Checkbox(
-                          value: isChecked,
-                          activeColor: const Color(0xFF22873B),
-                          onChanged: (bool? checked) {
-                            _toggleSavedSelection(item, checked);
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                DataCell(Text(specCode, style: TextStyle(color: textColor, fontSize: 11, fontWeight: FontWeight.bold))),
-                DataCell(
-                  Container(
-                    constraints: const BoxConstraints(maxWidth: 130),
-                    child: Text(
-                      clusterName,
-                      style: TextStyle(color: textColor, fontSize: 11),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 2,
-                    ),
-                  ),
-                ),
-                DataCell(
-                  Container(
-                    constraints: const BoxConstraints(maxWidth: 180),
-                    child: Text(
-                      univName,
-                      style: TextStyle(color: textColor, fontSize: 11),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 2,
-                    ),
-                  ),
-                ),
-                DataCell(
-                  Container(
-                    constraints: const BoxConstraints(maxWidth: 180),
-                    child: Text(
-                      specName,
-                      style: TextStyle(color: textColor, fontSize: 11),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 2,
-                    ),
-                  ),
-                ),                DataCell(Text(studyForm, style: TextStyle(color: textColor, fontSize: 11))),
-                DataCell(Text(studyType, style: TextStyle(color: textColor, fontSize: 11))),
-                DataCell(
-                  Text(
-                    isFree ? 'ройгон' : (tuitionFee != null ? '$tuitionFee' : 'шартнома'),
-                    style: TextStyle(
-                      color: isFree ? Colors.green : Colors.orange.shade800,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                DataCell(Text(studyLanguage, style: TextStyle(color: textColor, fontSize: 11))),
-                DataCell(Text('$planSeats', style: TextStyle(color: textColor, fontSize: 11, fontWeight: FontWeight.bold))),
-                DataCell(Text('11', style: TextStyle(color: textColor, fontSize: 11))),
-                DataCell(
-                  Text(
-                    (lastYearScore != null && lastYearScore > 0) ? '$lastYearScore' : '—',
-                    style: TextStyle(
-                      color: (lastYearScore != null && lastYearScore > 0) ? Colors.green.shade700 : textColor.withOpacity(0.5),
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                DataCell(
-                  IconButton(
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    icon: Icon(
-                      isSavedView ? Icons.delete_outline : (_isSpecialtySaved(item) ? Icons.bookmark : Icons.bookmark_border),
-                      color: isSavedView ? Colors.red : (_isSpecialtySaved(item) ? const Color(0xFF22873B) : textColor.withOpacity(0.4)),
-                      size: 16,
-                    ),
-                    onPressed: () {
-                      if (isSavedView) {
-                        _deleteSavedSpecialty(item);
-                      } else {
-                        if (_isSpecialtySaved(item)) {
-                          _deleteSavedSpecialty(item);
-                        } else {
-                          _saveSpecialty(_toMap(item));
-                        }
-                      }
-                    },
-                  ),
-                ),
-              ],
-            );
-          }).toList(),
-        ),
-      ),
-    );
-  }
-
-
-
-  Widget _buildAiAnalyticsDashboard(ChatMessage msg, bool isDarkMode, Color textColor, Color primaryColor) {
-    if (msg.studyTimeAllocation == null && msg.portfolioFeedback == null && msg.whatIfScenario == null && msg.peerGroupRecommendationText == null) {
+  Widget _buildAiAnalyticsDashboard(
+    ChatMessage msg,
+    bool isDarkMode,
+    Color textColor,
+    Color primaryColor,
+  ) {
+    if (msg.studyTimeAllocation == null &&
+        msg.portfolioFeedback == null &&
+        msg.whatIfScenario == null &&
+        msg.peerGroupRecommendationText == null) {
       return const SizedBox.shrink();
     }
 
@@ -2139,7 +2473,9 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
       margin: const EdgeInsets.only(bottom: 16, right: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDarkMode ? Colors.white.withOpacity(0.03) : const Color(0xFFF1F8F3),
+        color: isDarkMode
+            ? Colors.white.withOpacity(0.03)
+            : const Color(0xFFF1F8F3),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDarkMode ? Colors.white10 : const Color(0xFFD1E2D5),
@@ -2165,7 +2501,8 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
           const SizedBox(height: 12),
 
           // 1. Study time allocation progress bars
-          if (msg.studyTimeAllocation != null && msg.studyTimeAllocation!.isNotEmpty) ...[
+          if (msg.studyTimeAllocation != null &&
+              msg.studyTimeAllocation!.isNotEmpty) ...[
             Text(
               'Тақсимоти вақти омӯзиш (таъсири маржиналӣ):',
               style: TextStyle(
@@ -2179,10 +2516,14 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
               final subject = entry.key;
               final double val = (entry.value as num).toDouble();
               Color barColor;
-              if (subject.contains("Химия")) barColor = Colors.teal;
-              else if (subject.contains("Биология")) barColor = Colors.green;
-              else if (subject.contains("Физика")) barColor = Colors.orange;
-              else barColor = Colors.blue;
+              if (subject.contains("Химия"))
+                barColor = Colors.teal;
+              else if (subject.contains("Биология"))
+                barColor = Colors.green;
+              else if (subject.contains("Физика"))
+                barColor = Colors.orange;
+              else
+                barColor = Colors.blue;
 
               return Padding(
                 padding: const EdgeInsets.only(bottom: 8),
@@ -2198,7 +2539,11 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
                         ),
                         Text(
                           '${val.toStringAsFixed(0)}%',
-                          style: TextStyle(color: barColor, fontSize: 11, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            color: barColor,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ],
                     ),
@@ -2207,7 +2552,9 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
                       borderRadius: BorderRadius.circular(4),
                       child: LinearProgressIndicator(
                         value: val / 100.0,
-                        backgroundColor: isDarkMode ? Colors.white10 : Colors.black12,
+                        backgroundColor: isDarkMode
+                            ? Colors.white10
+                            : Colors.black12,
                         valueColor: AlwaysStoppedAnimation<Color>(barColor),
                         minHeight: 6,
                       ),
@@ -2256,7 +2603,11 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.shield_outlined, color: Colors.amber, size: 18),
+                  const Icon(
+                    Icons.shield_outlined,
+                    color: Colors.amber,
+                    size: 18,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -2274,7 +2625,8 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
           ],
 
           // 4. Peer recommendations
-          if (msg.peerGroupRecommendationText != null && msg.peerGroupRecommendationText!.isNotEmpty) ...[
+          if (msg.peerGroupRecommendationText != null &&
+              msg.peerGroupRecommendationText!.isNotEmpty) ...[
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
@@ -2283,7 +2635,11 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.group_outlined, color: Colors.blue, size: 18),
+                  const Icon(
+                    Icons.group_outlined,
+                    color: Colors.blue,
+                    size: 18,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -2303,7 +2659,12 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
     );
   }
 
-  Widget _buildCardInfoChip(IconData icon, String label, Color color, bool isDarkMode) {
+  Widget _buildCardInfoChip(
+    IconData icon,
+    String label,
+    Color color,
+    bool isDarkMode,
+  ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -2331,7 +2692,8 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
   int _activeFiltersCount() {
     int count = 0;
     if (_selectedClusterId != 5) count++;
-    if (_selectedUniversityCode != null && _selectedUniversityCode!.isNotEmpty) count++;
+    if (_selectedUniversityCode != null && _selectedUniversityCode!.isNotEmpty)
+      count++;
     if (_selectedStudyType != null) count++;
     if (_selectedStudyForm != null) count++;
     if (_selectedStudyLanguage != null) count++;
@@ -2350,7 +2712,11 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
     return _activeFiltersCount() > 0;
   }
 
-  Widget _buildFilterInputs(Color textColor, bool isDarkMode, StateSetter setModalState) {
+  Widget _buildFilterInputs(
+    Color textColor,
+    bool isDarkMode,
+    StateSetter setModalState,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2376,11 +2742,17 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
               value: _selectedClusterId,
               dropdownColor: isDarkMode ? Colors.black : Colors.white,
               style: TextStyle(color: textColor, fontSize: 13),
-              icon: Icon(Icons.arrow_drop_down, color: textColor.withOpacity(0.6)),
+              icon: Icon(
+                Icons.arrow_drop_down,
+                color: textColor.withOpacity(0.6),
+              ),
               items: const [
                 DropdownMenuItem<int>(
                   value: 0,
-                  child: Text('Ҳамаи кластерҳо', style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: Text(
+                    'Ҳамаи кластерҳо',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ),
                 DropdownMenuItem<int>(
                   value: 1,
@@ -2434,7 +2806,10 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
                   child: SizedBox(
                     width: 20,
                     height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.green),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.green,
+                    ),
                   ),
                 ),
               )
@@ -2450,26 +2825,40 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
                     value: _selectedUniversityCode,
                     hint: Text(
                       'Ҳамаи муассисаҳои таълимӣ',
-                      style: TextStyle(color: textColor.withOpacity(0.6), fontSize: 13),
+                      style: TextStyle(
+                        color: textColor.withOpacity(0.6),
+                        fontSize: 13,
+                      ),
                     ),
                     dropdownColor: isDarkMode ? Colors.black : Colors.white,
                     style: TextStyle(color: textColor, fontSize: 13),
-                    icon: Icon(Icons.arrow_drop_down, color: textColor.withOpacity(0.6)),
+                    icon: Icon(
+                      Icons.arrow_drop_down,
+                      color: textColor.withOpacity(0.6),
+                    ),
                     items: [
                       DropdownMenuItem<String>(
                         value: null,
-                        child: Text(
-                          'Ҳамаи муассисаҳо',
-                          style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Text(
+                            'Ҳамаи муассисаҳо',
+                            style: TextStyle(
+                              color: textColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ),
                       ..._universities.map((u) {
                         return DropdownMenuItem<String>(
                           value: u['code']?.toString(),
-                          child: Text(
-                            u['name']?.toString() ?? '',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Text(
+                              u['name']?.toString() ?? '',
+                              style: TextStyle(color: textColor),
+                            ),
                           ),
                         );
                       }),
@@ -2506,15 +2895,33 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
               value: _selectedStudyType,
               hint: Text(
                 'Ҳамаи намудҳо',
-                style: TextStyle(color: textColor.withOpacity(0.6), fontSize: 13),
+                style: TextStyle(
+                  color: textColor.withOpacity(0.6),
+                  fontSize: 13,
+                ),
               ),
               dropdownColor: isDarkMode ? Colors.black : Colors.white,
               style: TextStyle(color: textColor, fontSize: 13),
-              icon: Icon(Icons.arrow_drop_down, color: textColor.withOpacity(0.6)),
+              icon: Icon(
+                Icons.arrow_drop_down,
+                color: textColor.withOpacity(0.6),
+              ),
               items: const [
-                DropdownMenuItem<String>(value: null, child: Text('Ҳамаи намудҳо', style: TextStyle(fontWeight: FontWeight.bold))),
-                DropdownMenuItem<String>(value: 'ройгон', child: Text('Ройгон')),
-                DropdownMenuItem<String>(value: 'пулакӣ', child: Text('Пулакӣ')),
+                DropdownMenuItem<String>(
+                  value: null,
+                  child: Text(
+                    'Ҳамаи намудҳо',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                DropdownMenuItem<String>(
+                  value: 'ройгон',
+                  child: Text('Ройгон'),
+                ),
+                DropdownMenuItem<String>(
+                  value: 'пулакӣ',
+                  child: Text('Пулакӣ'),
+                ),
               ],
               onChanged: (val) {
                 setModalState(() {
@@ -2548,16 +2955,37 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
               value: _selectedStudyForm,
               hint: Text(
                 'Ҳамаи шаклҳо',
-                style: TextStyle(color: textColor.withOpacity(0.6), fontSize: 13),
+                style: TextStyle(
+                  color: textColor.withOpacity(0.6),
+                  fontSize: 13,
+                ),
               ),
               dropdownColor: isDarkMode ? Colors.black : Colors.white,
               style: TextStyle(color: textColor, fontSize: 13),
-              icon: Icon(Icons.arrow_drop_down, color: textColor.withOpacity(0.6)),
+              icon: Icon(
+                Icons.arrow_drop_down,
+                color: textColor.withOpacity(0.6),
+              ),
               items: const [
-                DropdownMenuItem<String>(value: null, child: Text('Ҳамаи шаклҳо', style: TextStyle(fontWeight: FontWeight.bold))),
-                DropdownMenuItem<String>(value: 'рӯзона', child: Text('Рӯзона')),
-                DropdownMenuItem<String>(value: 'ғоибона', child: Text('Ғоибона')),
-                DropdownMenuItem<String>(value: 'фосилавӣ', child: Text('Фосилавӣ')),
+                DropdownMenuItem<String>(
+                  value: null,
+                  child: Text(
+                    'Ҳамаи шаклҳо',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                DropdownMenuItem<String>(
+                  value: 'рӯзона',
+                  child: Text('Рӯзона'),
+                ),
+                DropdownMenuItem<String>(
+                  value: 'ғоибона',
+                  child: Text('Ғоибона'),
+                ),
+                DropdownMenuItem<String>(
+                  value: 'фосилавӣ',
+                  child: Text('Фосилавӣ'),
+                ),
               ],
               onChanged: (val) {
                 setModalState(() {
@@ -2590,16 +3018,37 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
               value: _selectedStudyLanguage,
               hint: Text(
                 'Ҳамаи забонҳо',
-                style: TextStyle(color: textColor.withOpacity(0.6), fontSize: 13),
+                style: TextStyle(
+                  color: textColor.withOpacity(0.6),
+                  fontSize: 13,
+                ),
               ),
               dropdownColor: isDarkMode ? Colors.black : Colors.white,
               style: TextStyle(color: textColor, fontSize: 13),
-              icon: Icon(Icons.arrow_drop_down, color: textColor.withOpacity(0.6)),
+              icon: Icon(
+                Icons.arrow_drop_down,
+                color: textColor.withOpacity(0.6),
+              ),
               items: const [
-                DropdownMenuItem<String>(value: null, child: Text('Ҳамаи забонҳо', style: TextStyle(fontWeight: FontWeight.bold))),
-                DropdownMenuItem<String>(value: 'тоҷикӣ', child: Text('Тоҷикӣ (алоҳида)')),
-                DropdownMenuItem<String>(value: 'русӣ', child: Text('Русӣ (алоҳида)')),
-                DropdownMenuItem<String>(value: 'тоҷикӣ, русӣ', child: Text('Тоҷикӣ ва русӣ (якҷоя)')),
+                DropdownMenuItem<String>(
+                  value: null,
+                  child: Text(
+                    'Ҳамаи забонҳо',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                DropdownMenuItem<String>(
+                  value: 'тоҷикӣ',
+                  child: Text('Тоҷикӣ (алоҳида)'),
+                ),
+                DropdownMenuItem<String>(
+                  value: 'русӣ',
+                  child: Text('Русӣ (алоҳида)'),
+                ),
+                DropdownMenuItem<String>(
+                  value: 'тоҷикӣ, русӣ',
+                  child: Text('Тоҷикӣ ва русӣ (якҷоя)'),
+                ),
               ],
               onChanged: (val) {
                 setModalState(() {
@@ -2624,10 +3073,20 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
           controller: _specNameController,
           decoration: InputDecoration(
             hintText: 'Масалан: Муҳандис',
-            hintStyle: TextStyle(color: textColor.withOpacity(0.3), fontSize: 13),
-            prefixIcon: Icon(Icons.school_outlined, color: textColor.withOpacity(0.4), size: 18),
+            hintStyle: TextStyle(
+              color: textColor.withOpacity(0.3),
+              fontSize: 13,
+            ),
+            prefixIcon: Icon(
+              Icons.school_outlined,
+              color: textColor.withOpacity(0.4),
+              size: 18,
+            ),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 10,
+            ),
           ),
           style: TextStyle(color: textColor, fontSize: 13),
           onChanged: (val) {
@@ -2649,10 +3108,20 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
           controller: _specCodeController,
           decoration: InputDecoration(
             hintText: 'Масалан: 1-250103',
-            hintStyle: TextStyle(color: textColor.withOpacity(0.3), fontSize: 13),
-            prefixIcon: Icon(Icons.pin_outlined, color: textColor.withOpacity(0.4), size: 18),
+            hintStyle: TextStyle(
+              color: textColor.withOpacity(0.3),
+              fontSize: 13,
+            ),
+            prefixIcon: Icon(
+              Icons.pin_outlined,
+              color: textColor.withOpacity(0.4),
+              size: 18,
+            ),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 10,
+            ),
           ),
           style: TextStyle(color: textColor, fontSize: 13),
           onChanged: (val) {
@@ -2677,10 +3146,18 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
                   labelText: 'Бал аз',
-                  labelStyle: TextStyle(color: textColor.withOpacity(0.6), fontSize: 12),
+                  labelStyle: TextStyle(
+                    color: textColor.withOpacity(0.6),
+                    fontSize: 12,
+                  ),
                   hintText: 'Масалан: 100',
-                  hintStyle: TextStyle(color: textColor.withOpacity(0.3), fontSize: 12),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  hintStyle: TextStyle(
+                    color: textColor.withOpacity(0.3),
+                    fontSize: 12,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 style: TextStyle(color: textColor, fontSize: 13),
                 controller: _minScoreController,
@@ -2695,10 +3172,18 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
                   labelText: 'Бал то',
-                  labelStyle: TextStyle(color: textColor.withOpacity(0.6), fontSize: 12),
+                  labelStyle: TextStyle(
+                    color: textColor.withOpacity(0.6),
+                    fontSize: 12,
+                  ),
                   hintText: 'Масалан: 350',
-                  hintStyle: TextStyle(color: textColor.withOpacity(0.3), fontSize: 12),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  hintStyle: TextStyle(
+                    color: textColor.withOpacity(0.3),
+                    fontSize: 12,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 style: TextStyle(color: textColor, fontSize: 13),
                 controller: _maxScoreController,
@@ -2727,10 +3212,18 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
                   labelText: 'Маблағ аз',
-                  labelStyle: TextStyle(color: textColor.withOpacity(0.6), fontSize: 12),
+                  labelStyle: TextStyle(
+                    color: textColor.withOpacity(0.6),
+                    fontSize: 12,
+                  ),
                   hintText: 'Масалан: 3000',
-                  hintStyle: TextStyle(color: textColor.withOpacity(0.3), fontSize: 12),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  hintStyle: TextStyle(
+                    color: textColor.withOpacity(0.3),
+                    fontSize: 12,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 style: TextStyle(color: textColor, fontSize: 13),
                 controller: _minFeeController,
@@ -2745,10 +3238,18 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
                   labelText: 'Маблағ то',
-                  labelStyle: TextStyle(color: textColor.withOpacity(0.6), fontSize: 12),
+                  labelStyle: TextStyle(
+                    color: textColor.withOpacity(0.6),
+                    fontSize: 12,
+                  ),
                   hintText: 'Масалан: 10000',
-                  hintStyle: TextStyle(color: textColor.withOpacity(0.3), fontSize: 12),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  hintStyle: TextStyle(
+                    color: textColor.withOpacity(0.3),
+                    fontSize: 12,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 style: TextStyle(color: textColor, fontSize: 13),
                 controller: _maxFeeController,
@@ -2777,10 +3278,18 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
                   labelText: 'Ҷойҳо аз',
-                  labelStyle: TextStyle(color: textColor.withOpacity(0.6), fontSize: 12),
+                  labelStyle: TextStyle(
+                    color: textColor.withOpacity(0.6),
+                    fontSize: 12,
+                  ),
                   hintText: 'Масалан: 5',
-                  hintStyle: TextStyle(color: textColor.withOpacity(0.3), fontSize: 12),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  hintStyle: TextStyle(
+                    color: textColor.withOpacity(0.3),
+                    fontSize: 12,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 style: TextStyle(color: textColor, fontSize: 13),
                 controller: _minSeatsController,
@@ -2795,10 +3304,18 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
                   labelText: 'Ҷойҳо то',
-                  labelStyle: TextStyle(color: textColor.withOpacity(0.6), fontSize: 12),
+                  labelStyle: TextStyle(
+                    color: textColor.withOpacity(0.6),
+                    fontSize: 12,
+                  ),
                   hintText: 'Масалан: 50',
-                  hintStyle: TextStyle(color: textColor.withOpacity(0.3), fontSize: 12),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  hintStyle: TextStyle(
+                    color: textColor.withOpacity(0.3),
+                    fontSize: 12,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 style: TextStyle(color: textColor, fontSize: 13),
                 controller: _maxSeatsController,
@@ -2831,18 +3348,26 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
         final isDarkMode = Provider.of<ThemeProvider>(context).isDarkMode;
         final textColor = isDarkMode ? Colors.white : Colors.black;
         final cardColor = isDarkMode ? const Color(0xFF1E1E1E) : Colors.white;
-        
+
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
             final double screenHeight = MediaQuery.of(context).size.height;
-            final bool isPortrait = MediaQuery.of(context).orientation == Orientation.portrait;
+            final bool isPortrait =
+                MediaQuery.of(context).orientation == Orientation.portrait;
             return Container(
               height: isPortrait ? screenHeight * 0.9 : null,
               decoration: BoxDecoration(
                 color: cardColor,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(24),
+                ),
               ),
-              padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(context).viewInsets.bottom + 24),
+              padding: EdgeInsets.fromLTRB(
+                20,
+                16,
+                20,
+                MediaQuery.of(context).viewInsets.bottom + 24,
+              ),
               child: Column(
                 mainAxisSize: isPortrait ? MainAxisSize.max : MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -2917,28 +3442,38 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
                   ),
                   const Divider(),
                   const SizedBox(height: 10),
-                  
+
                   isPortrait
                       ? Expanded(
                           child: SingleChildScrollView(
-                            child: _buildFilterInputs(textColor, isDarkMode, setModalState),
+                            child: _buildFilterInputs(
+                              textColor,
+                              isDarkMode,
+                              setModalState,
+                            ),
                           ),
                         )
                       : Flexible(
                           child: SingleChildScrollView(
-                            child: _buildFilterInputs(textColor, isDarkMode, setModalState),
+                            child: _buildFilterInputs(
+                              textColor,
+                              isDarkMode,
+                              setModalState,
+                            ),
                           ),
                         ),
-                  
+
                   const SizedBox(height: 16),
-                  
+
                   SizedBox(
                     width: double.infinity,
                     height: 48,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF22873B),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                         padding: EdgeInsets.zero,
                       ),
                       onPressed: () {
@@ -2948,8 +3483,12 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
                         _maxTuitionFee = int.tryParse(_maxFeeController.text);
                         _minSeats = int.tryParse(_minSeatsController.text);
                         _maxSeats = int.tryParse(_maxSeatsController.text);
-                        _specialtyName = _specNameController.text.isNotEmpty ? _specNameController.text : null;
-                        _specialtyCode = _specCodeController.text.isNotEmpty ? _specCodeController.text : null;
+                        _specialtyName = _specNameController.text.isNotEmpty
+                            ? _specNameController.text
+                            : null;
+                        _specialtyCode = _specCodeController.text.isNotEmpty
+                            ? _specCodeController.text
+                            : null;
 
                         Navigator.pop(context);
                         _fetchSpecialties(reset: true);
@@ -2975,7 +3514,13 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
     );
   }
 
-  Widget _buildModalChip(String label, String? value, String? groupValue, ValueChanged<String?> onChanged, bool isDarkMode) {
+  Widget _buildModalChip(
+    String label,
+    String? value,
+    String? groupValue,
+    ValueChanged<String?> onChanged,
+    bool isDarkMode,
+  ) {
     final isSelected = groupValue == value;
     return GestureDetector(
       onTap: () => onChanged(value),
@@ -2984,7 +3529,9 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
         decoration: BoxDecoration(
           color: isSelected
               ? const Color(0xFF22873B)
-              : (isDarkMode ? Colors.white.withOpacity(0.06) : const Color(0xFFF1F8F4)),
+              : (isDarkMode
+                    ? Colors.white.withOpacity(0.06)
+                    : const Color(0xFFF1F8F4)),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: isSelected
@@ -2995,7 +3542,9 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.white : (isDarkMode ? Colors.white70 : Colors.black87),
+            color: isSelected
+                ? Colors.white
+                : (isDarkMode ? Colors.white70 : Colors.black87),
             fontSize: 12,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           ),
@@ -3009,7 +3558,11 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.school_outlined, size: 64, color: textColor.withOpacity(0.2)),
+          Icon(
+            Icons.school_outlined,
+            size: 64,
+            color: textColor.withOpacity(0.2),
+          ),
           const SizedBox(height: 16),
           Text(
             'Ихтисосҳо ёфт нашуданд',
@@ -3022,24 +3575,31 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
           const SizedBox(height: 6),
           Text(
             'Лутфан параметрҳои филтрро иваз кунед',
-            style: TextStyle(
-              color: textColor.withOpacity(0.5),
-              fontSize: 13,
-            ),
+            style: TextStyle(color: textColor.withOpacity(0.5), fontSize: 13),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildFilterChip(String label, String? value, String? groupValue, ValueChanged<String?> onChanged) {
+  Widget _buildFilterChip(
+    String label,
+    String? value,
+    String? groupValue,
+    ValueChanged<String?> onChanged,
+  ) {
     final isSelected = groupValue == value;
-    final isDarkMode = Provider.of<ThemeProvider>(context, listen: false).isDarkMode;
+    final isDarkMode = Provider.of<ThemeProvider>(
+      context,
+      listen: false,
+    ).isDarkMode;
     return ChoiceChip(
       label: Text(label),
       selected: isSelected,
       onSelected: (_) => onChanged(value),
-      backgroundColor: isDarkMode ? Colors.white.withOpacity(0.06) : const Color(0xFFF1F8F4),
+      backgroundColor: isDarkMode
+          ? Colors.white.withOpacity(0.06)
+          : const Color(0xFFF1F8F4),
       selectedColor: const Color(0xFF22873B),
       labelStyle: TextStyle(
         color: isSelected
@@ -3047,6 +3607,223 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
             : (isDarkMode ? Colors.white70 : Colors.black87),
         fontSize: 11,
         fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+      ),
+    );
+  }
+
+  Widget _buildTableCell(
+    Widget child,
+    double width,
+    bool isDarkMode, {
+    Alignment alignment = Alignment.centerLeft,
+  }) {
+    return Container(
+      width: width,
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      alignment: alignment,
+      decoration: BoxDecoration(
+        border: Border(
+          right: BorderSide(
+            color: isDarkMode ? Colors.grey.shade800 : Colors.black,
+            width: 0.5,
+          ),
+        ),
+      ),
+      child: child,
+    );
+  }
+
+  Widget _buildTableHeader(bool isSavedView, Color textColor, bool isDarkMode) {
+    final headerBgColor = isDarkMode ? Colors.black : Colors.white;
+    final headerTextColor = isDarkMode ? Colors.white : Colors.black;
+    final headerStyle = TextStyle(
+      color: headerTextColor,
+      fontWeight: FontWeight.bold,
+      fontSize: 11,
+    );
+
+    return Container(
+      decoration: BoxDecoration(
+        color: headerBgColor,
+        border: Border(
+          bottom: BorderSide(
+            color: isDarkMode ? Colors.grey.shade800 : Colors.black,
+            width: 0.5,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          _buildTableCell(Text('ID', style: headerStyle), 40, isDarkMode),
+          if (isSavedView)
+            _buildTableCell(
+              Text('Интихоб', style: headerStyle),
+              60,
+              isDarkMode,
+            ),
+          _buildTableCell(
+            Text('Муассисаи таълимӣ', style: headerStyle),
+            200,
+            isDarkMode,
+          ),
+          _buildTableCell(
+            Text('Ном ва рамзи ихтисос', style: headerStyle),
+            280,
+            isDarkMode,
+          ),
+          _buildTableCell(
+            Text('Тафсилот ва талабот', style: headerStyle),
+            320,
+            isDarkMode,
+          ),
+          _buildTableCell(Text('Амал', style: headerStyle), 60, isDarkMode),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTableRowItem(
+    dynamic item,
+    int index,
+    Color textColor,
+    bool isDarkMode,
+    Color primaryColor,
+    bool isSavedView,
+  ) {
+    final idx = index + 1;
+    final id = item['id']?.toString() ?? '';
+    final specName = item['specialtyName']?.toString() ?? '';
+    final specCode = item['specialtyCode']?.toString() ?? '';
+    final univName = item['universityName']?.toString() ?? '';
+    final studyForm = item['studyForm']?.toString() ?? 'рӯзона';
+    final studyType = item['studyType']?.toString() ?? '';
+    final tuitionFee = (item['tuitionFee'] as num?)?.toInt();
+    final studyLanguage = item['studyLanguage']?.toString() ?? 'тоҷикӣ';
+    final planSeats = (item['planSeats'] as num?)?.toInt() ?? 0;
+    final lastYearScore = (item['lastYearPassingScore'] as num?)?.toDouble();
+    final clusterName = item['clusterName']?.toString() ?? '';
+
+    final isFree =
+        studyType.toLowerCase().contains('ройгон') ||
+        studyType.toLowerCase().contains('буҷет');
+
+    final rowBgColor = isDarkMode ? Colors.black : Colors.white;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: rowBgColor,
+        border: Border(
+          bottom: BorderSide(
+            color: isDarkMode ? Colors.grey.shade800 : Colors.black,
+            width: 0.5,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          _buildTableCell(
+            Text(
+              id.isNotEmpty ? id : idx.toString(),
+              style: TextStyle(color: textColor, fontSize: 11),
+            ),
+            40,
+            isDarkMode,
+          ),
+          if (isSavedView)
+            _buildTableCell(
+              ValueListenableBuilder<List<dynamic>>(
+                valueListenable:
+                    SpecialtiesScreen.selectedSavedSpecialtiesNotifier,
+                builder: (context, selectedList, _) {
+                  final isChecked = selectedList.any(
+                    (x) =>
+                        x['specialtyCode'] == item['specialtyCode'] &&
+                        x['universityName'] == item['universityName'] &&
+                        x['studyForm'] == item['studyForm'] &&
+                        x['studyType'] == item['studyType'],
+                  );
+                  return Checkbox(
+                    value: isChecked,
+                    activeColor: const Color(0xFF22873B),
+                    onChanged: (bool? checked) {
+                      _toggleSavedSelection(item, checked);
+                    },
+                  );
+                },
+              ),
+              60,
+              isDarkMode,
+              alignment: Alignment.center,
+            ),
+          _buildTableCell(
+            Text(
+              univName,
+              style: TextStyle(color: textColor, fontSize: 11),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 2,
+            ),
+            200,
+            isDarkMode,
+          ),
+          _buildTableCell(
+            Text(
+              '$specCode — $specName',
+              style: TextStyle(color: textColor, fontSize: 11),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 2,
+            ),
+            280,
+            isDarkMode,
+          ),
+          _buildTableCell(
+            Text(
+              '$studyForm • $studyType ($studyLanguage) • 11 синф.\n'
+              '${isFree ? 'Ройгон' : (tuitionFee != null ? '$tuitionFee c.' : 'шартнома')} • $planSeats нафар • Бал: ${(lastYearScore != null && lastYearScore > 0) ? lastYearScore : '—'}',
+              style: TextStyle(
+                color: isDarkMode ? Colors.white : Colors.black,
+                fontSize: 10,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            320,
+            isDarkMode,
+          ),
+          _buildTableCell(
+            IconButton(
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              icon: Icon(
+                isSavedView
+                    ? Icons.delete_outline
+                    : (_isSpecialtySaved(item)
+                          ? Icons.bookmark
+                          : Icons.bookmark_border),
+                color: isSavedView
+                    ? Colors.red
+                    : (_isSpecialtySaved(item)
+                          ? const Color(0xFF22873B)
+                          : textColor.withOpacity(0.4)),
+                size: 16,
+              ),
+              onPressed: () {
+                if (isSavedView) {
+                  _deleteSavedSpecialty(item);
+                } else {
+                  if (_isSpecialtySaved(item)) {
+                    _deleteSavedSpecialty(item);
+                  } else {
+                    _saveSpecialty(_toMap(item));
+                  }
+                }
+              },
+            ),
+            60,
+            isDarkMode,
+            alignment: Alignment.center,
+          ),
+        ],
       ),
     );
   }

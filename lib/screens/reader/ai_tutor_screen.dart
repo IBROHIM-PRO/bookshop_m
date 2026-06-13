@@ -47,7 +47,7 @@ class _AiTutorScreenState extends State<AiTutorScreen> with TickerProviderStateM
           '• Нуқтаҳои заифро ошкор мекунам\n'
           '• Нақшаи омӯзиши шахсӣ месозам\n'
           '• Пешрафти шуморо пайгирӣ мекунам\n\n'
-          'Барои оғоз тугмаи «Ташхис»-ро пахш кунед ё саволатонро нависед!',
+          'Барои оғоз саволатонро нависед!',
       isUser: false,
     ));
   }
@@ -158,12 +158,7 @@ class _AiTutorScreenState extends State<AiTutorScreen> with TickerProviderStateM
               ),
             ],
           ),
-          actions: [
-            IconButton(
-              icon: Icon(Icons.tune_rounded, color: subtle, size: 22),
-              onPressed: () => _showSettingsSheet(isDark, textColor, accent),
-            ),
-          ],
+          actions: const [],
           bottom: TabBar(
             indicatorColor: accent,
             labelColor: accent,
@@ -181,27 +176,6 @@ class _AiTutorScreenState extends State<AiTutorScreen> with TickerProviderStateM
             // Tab 1: Chatbot
             Column(
               children: [
-                // Quick action chips
-                Container(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF0D120E) : Colors.white,
-                    border: Border(bottom: BorderSide(color: isDark ? Colors.white10 : const Color(0xFFD6E8DC))),
-                  ),
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Row(
-                      children: [
-                        _chipButton('📊 Ташхис', accent, () => _sendRequest(customPrompt: 'Ташхиси пурраи сатҳи ман')),
-                        _chipButton('📋 Нақша', Colors.orange.shade700, () => _sendRequest(customPrompt: 'Нақшаи ҳафтагии омӯзишро бисоз')),
-                        _chipButton('📈 Пешрафт', Colors.blue.shade700, () => _sendRequest(customPrompt: 'Траекторияи пешрафти маро нишон деҳ')),
-                        _chipButton('🔥 Ангеза', Colors.deepPurple, () => _sendRequest(customPrompt: 'Маро ҳавасманд кун')),
-                      ],
-                    ),
-                  ),
-                ),
-
                 // Messages
                 Expanded(
                   child: ListView.builder(
@@ -237,6 +211,9 @@ class _AiTutorScreenState extends State<AiTutorScreen> with TickerProviderStateM
                           child: TextField(
                             controller: _inputController,
                             style: TextStyle(color: textColor, fontSize: 14),
+                            keyboardType: TextInputType.multiline,
+                            minLines: 1,
+                            maxLines: 5,
                             decoration: InputDecoration(
                               hintText: 'Саволатонро нависед...',
                               hintStyle: TextStyle(color: subtle, fontSize: 13),
@@ -271,24 +248,6 @@ class _AiTutorScreenState extends State<AiTutorScreen> with TickerProviderStateM
             // Tab 3: Recommended Specialties
             _buildRecommendationsTab(isDark, textColor, cardBg, accent, subtle),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _chipButton(String label, Color color, VoidCallback onTap) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: GestureDetector(
-        onTap: _isLoading ? null : onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.12),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: color.withOpacity(0.3)),
-          ),
-          child: Text(label, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600)),
         ),
       ),
     );
@@ -681,59 +640,7 @@ class _AiTutorScreenState extends State<AiTutorScreen> with TickerProviderStateM
     );
   }
 
-  void _showSettingsSheet(bool isDark, Color textColor, Color accent) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: isDark ? const Color(0xFF141C17) : Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) {
-        return StatefulBuilder(builder: (ctx, setSheetState) {
-          return Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Танзимот', style: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 16),
-                Text('Ҳафта то имтиҳон: $_weeksToExam', style: TextStyle(color: textColor, fontSize: 13)),
-                Slider(
-                  value: _weeksToExam.toDouble(), min: 1, max: 24, divisions: 23,
-                  activeColor: accent,
-                  onChanged: (v) { setSheetState(() => _weeksToExam = v.round()); setState(() {}); },
-                ),
-                Text('Соати рӯзона: $_dailyHours', style: TextStyle(color: textColor, fontSize: 13)),
-                Slider(
-                  value: _dailyHours.toDouble(), min: 1, max: 8, divisions: 7,
-                  activeColor: accent,
-                  onChanged: (v) { setSheetState(() => _dailyHours = v.round()); setState(() {}); },
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  style: TextStyle(color: textColor, fontSize: 14),
-                  decoration: InputDecoration(
-                    labelText: 'Ихтисоси ҳадафӣ (ихтиёрӣ)',
-                    labelStyle: TextStyle(color: textColor.withOpacity(0.5), fontSize: 12),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  onChanged: (v) => _targetSpecialty = v,
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: accent, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                    onPressed: () => Navigator.pop(ctx),
-                    child: const Text('Тайёр', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                  ),
-                ),
-              ],
-            ),
-          );
-        });
-      },
-    );
-  }
+
 
   Widget _buildDashboardTab(bool isDark, Color textColor, Color cardBg, Color accent, Color subtle) {
     if (_lastAiData == null) {
@@ -809,7 +716,7 @@ class _AiTutorScreenState extends State<AiTutorScreen> with TickerProviderStateM
               ),
               const SizedBox(height: 8),
               Text(
-                'Барои дидани ихтисосҳои тавсияшуда, дар чатбот савол диҳед (масалан: 'Ихтисосҳоро тавсия кун').',
+                'Барои дидани ихтисосҳои тавсияшуда, дар чатбот савол диҳед (масалан: "Ихтисосҳоро тавсия кун").',
                 style: TextStyle(color: subtle, fontSize: 13),
                 textAlign: TextAlign.center,
               ),

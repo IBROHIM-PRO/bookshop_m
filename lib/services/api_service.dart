@@ -13,7 +13,7 @@ class ApiService {
     '192.168.0.100:5179',
     'localhost:5179',
     '10.0.2.2:5179',
-    '10.74.7.83:5179',
+    '10.201.43.83:5179',
   ];
   static int _currentHostIndex = 0;
 
